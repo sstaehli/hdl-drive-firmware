@@ -10,7 +10,7 @@ library olo;
   use olo.olo_fix_pkg.all;
 
 library project;
-  use project.utility.all;
+  use project.project_pkg.all;
 
 entity SVPWM_tb is
   generic (runner_cfg : string);
