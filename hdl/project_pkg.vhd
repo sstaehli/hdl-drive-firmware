@@ -8,7 +8,7 @@ use IEEE.NUMERIC_STD.ALL;
 use ieee.math_real.log2;
 use ieee.math_real.ceil;
 
-package utility is
+package project_pkg is
 
     -----------------------------------
     ------ external input signal ------
@@ -42,9 +42,9 @@ package utility is
 
     function invert (arg: std_logic) return std_logic;
 
-end utility;
+end project_pkg;
 
-package body utility is
+package body project_pkg is
 
     function invert (arg: std_logic)
         return std_logic is
@@ -54,4 +54,4 @@ package body utility is
         return not var;
     end invert;
     
-end package body utility;
+end package body project_pkg;
