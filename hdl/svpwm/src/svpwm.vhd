@@ -33,7 +33,6 @@ entity SVPWM is
     oADCTriggerHSOn : out STD_LOGIC;
     oEn : out STD_LOGIC;
     oFault_n : out STD_LOGIC
-
   );
 end entity SVPWM;
 

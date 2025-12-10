@@ -1,12 +1,8 @@
 library IEEE;
-use IEEE.STD_LOGIC_1164.ALL;
-
--- arithmetic functions with Signed or Unsigned values
-use IEEE.NUMERIC_STD.ALL;
-
--- for assertion / bus width calcs
-use ieee.math_real.log2;
-use ieee.math_real.ceil;
+  use IEEE.STD_LOGIC_1164.ALL;
+  use IEEE.NUMERIC_STD.ALL;
+  use IEEE.MATH_REAL.LOG2;
+  use IEEE.MATH_REAL.CEIL;
 
 package project_pkg is
 
