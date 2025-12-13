@@ -40,7 +40,7 @@ architecture tb of dq_transform_tb is
 
   -- sim signals
   signal clk : std_logic := '0';
-  signal reset_n : std_logic := '0';
+  signal reset : std_logic := '1';
   signal angle : real := 0.0;
 
   signal iSin, iCos, iA, iB, iC : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := (others => '0');
@@ -56,7 +56,7 @@ begin
 
     if run("dq_test_values_0deg") then
 
-      wait until reset_n = '1';
+      wait until reset = '0';
       for i in 0 to 99 loop
         wait until rising_edge(clk);
         -- simulate angle
@@ -77,6 +77,7 @@ begin
         wait until rising_edge(clk);
         wait until rising_edge(clk);
         wait until rising_edge(clk);
+        wait until rising_edge(clk);
         wait for 100 ps;
         -- convert to real for better readability
         sRealD <= cl_fix_to_real(oD,cFixFmt);
@@ -91,7 +92,7 @@ begin
 
     elsif run("dq_test_values_90deg") then
 
-      wait until reset_n = '1';
+      wait until reset = '0';
       for i in 0 to 99 loop
         wait until rising_edge(clk);
         -- simulate angle
@@ -112,6 +113,7 @@ begin
         wait until rising_edge(clk);
         wait until rising_edge(clk);
         wait until rising_edge(clk);
+        wait until rising_edge(clk);
         wait for 100 ps;
         -- convert to real for better readability
         sRealD <= cl_fix_to_real(oD,cFixFmt);
@@ -126,7 +128,7 @@ begin
 
     elsif run("dq_test_values_asym_and_limit") then
 
-      wait until reset_n = '1';
+      wait until reset = '0';
       for i in 0 to 99 loop
         wait until rising_edge(clk);
         -- simulate angle
@@ -147,6 +149,7 @@ begin
         wait until rising_edge(clk);
         wait until rising_edge(clk);
         wait until rising_edge(clk);
+        wait until rising_edge(clk);
         wait for 100 ps;
         -- convert to real for better readability
         sRealD <= cl_fix_to_real(oD,cFixFmt);
@@ -156,12 +159,12 @@ begin
         check_equal(sRealD, cCurrentACLim, max_diff => cTestLimitLimit);
         check_equal(sRealQ, 0.0, max_diff => cTestLimitLimit);
         check_equal(sRealDC, cCurrentDCLim, max_diff => cTestLimitLimit);
-        --check_equal(oReady, '1');
+        check_equal(oReady, '1');
       end loop;
 
     elsif run("dq_test_stall") then
 
-      wait until reset_n = '1';
+      wait until reset = '0';
       for i in 0 to 99 loop
         wait until rising_edge(clk);
         -- simulate angle
@@ -182,6 +185,7 @@ begin
         wait until rising_edge(clk);
         wait until rising_edge(clk);
         wait until rising_edge(clk);
+        wait until rising_edge(clk);
         wait for 100 ps;
       end loop;
       
@@ -194,25 +198,25 @@ begin
   clk <= not clk after 10 ns;
 
   -- deassert reset
-  reset_n <= '1' after 77 ns;
+  reset <= '0' after 77 ns;
 
   dut: entity project.dqTransform
     generic map (
-      gDataWidth => 12
+      DataWidth_g => 12
     )
     port map (
-      clk => clk,
-      reset_n => reset_n,
-      iSin => iSin,
-      iCos => iCos,
-      iA => iA,
-      iB => iB,
-      iC => iC,
-      oD => oD,
-      oQ => oQ,
-      oDC => oDC,
-      iStrobe => iStrobe,
-      oReady => oReady
+      Clk => clk,
+      Rst => reset,
+      Sine => iSin,
+      Cosine => iCos,
+      A => iA,
+      B => iB,
+      C => iC,
+      D => oD,
+      Q => oQ,
+      DC => oDC,
+      Strobe => iStrobe,
+      Valid => oReady
     );
 
 end architecture;
