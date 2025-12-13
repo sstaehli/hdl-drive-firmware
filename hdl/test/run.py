@@ -1,7 +1,12 @@
 from vunit import VUnit
+import inspect
 
 # Create VUnit instance
-vu = VUnit.from_argv(compile_builtins=False)  # Do not use compile_builtins.
+if "compile_builtins" in inspect.signature(VUnit.from_argv).parameters:
+    vu = VUnit.from_argv(compile_builtins=False)
+else:
+    vu = VUnit.from_argv()
+
 vu.add_vhdl_builtins()  # Add the VHDL builtins explicitly!
 
 # Add open-logic libraries
