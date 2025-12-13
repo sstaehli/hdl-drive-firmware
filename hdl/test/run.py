@@ -15,6 +15,8 @@ lib = vu.add_library("project")
 lib.add_source_files("../project_pkg.vhd")
 lib.add_source_files("../svpwm/src/svpwm.vhd")
 lib.add_source_files("../svpwm/test/svpwm_tb.vhd")
+lib.add_source_files("../modulator/src/modulator.vhd")
+lib.add_source_files("../modulator/test/modulator_tb.vhd")
 lib.add_source_files("../dqtransform/src/dqtransform.vhd")
 lib.add_source_files("../dqtransform/test/dqtransform_tb.vhd")
 

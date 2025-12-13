@@ -1,0 +1,8 @@
+stages:
+  - test
+
+unit_test:
+  stage: test
+  image: ghdl/vunit:llvm-master
+  script:
+    - cd hdl/test && python3 ./run.py
