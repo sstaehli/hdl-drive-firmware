@@ -1,6 +1,10 @@
 stages:
   - test
 
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  GIT_SUBMODULE_DEPTH: 1
+
 unit_test:
   stage: test
   image: ghdl/vunit:llvm-master
