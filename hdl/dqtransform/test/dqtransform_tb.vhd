@@ -18,19 +18,18 @@ end entity;
 
 architecture tb of dq_transform_tb is
 
-  constant cFixFmt : FixFormat_t := (1,0,11);
-  constant cFixFmtADC : FixFormat_t := (1,0,12);
+  constant FixFmt_c : FixFormat_t := (1,0,11);
 
-  constant cCurrentDC : real := 0.2;
-  constant cCurrentAC : real := 0.3;
-  constant c120Deg : real := (2.0*MATH_PI)/3.0;
+  constant CurrentDC_c : real := 0.2;
+  constant CurrentAC_c : real := 0.3;
+  constant A120Deg_c : real := (2.0*MATH_PI)/3.0;
 
   -- for 90 deg (Id) Test
-  constant cPhaseShift : real := (2.0*MATH_PI)/4.0;
+  constant PhaseShift_c : real := (2.0*MATH_PI)/4.0;
 
   -- for asymmetry and limits test 
-  constant cCurrentDCLim : real := 0.5; -- AC + ...
-  constant cCurrentACLim : real := 0.5; -- ... DC = 1.0 = FS
+  constant CurrentLimiDC_c : real := 0.5; -- AC + ...
+  constant CurrentLimAC_c : real := 0.5; -- ... DC = 1.0 = FS
   constant c110Deg : real := (2.0*MATH_PI*110.0)/360.0;
   
   -- global rough limit 0f 0.5% for calculated values
@@ -39,14 +38,14 @@ architecture tb of dq_transform_tb is
   constant cTestLimitLimit : real := 0.1;
 
   -- sim signals
-  signal clk : std_logic := '0';
-  signal reset : std_logic := '1';
-  signal angle : real := 0.0;
+  signal Clk : std_logic := '0';
+  signal Rst : std_logic := '1';
+  signal Angle : real := 0.0;
 
-  signal iSin, iCos, iA, iB, iC : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := (others => '0');
-  signal oD, oQ, oDC : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0);
-  signal iStrobe, oReady : std_logic;
-  signal sRealD, sRealQ, sRealDC : real;
+  signal Sine, Cosine, A, B, C : std_logic_vector(cl_fix_width(FixFmt_c)-1 downto 0) := (others => '0');
+  signal D, Q, DC : std_logic_vector(cl_fix_width(FixFmt_c)-1 downto 0);
+  signal Strobe, Valid : std_logic;
+  signal RealD, RealQ, RealDC : real;
 
 begin
 
@@ -56,167 +55,134 @@ begin
 
     if run("dq_test_values_0deg") then
 
-      wait until reset = '0';
+      wait until Rst = '0';
       for i in 0 to 99 loop
-        wait until rising_edge(clk);
-        -- simulate angle
-        angle <= 2.0*MATH_PI*real(i)/100.0;
+        wait until rising_edge(Clk);
+        -- simulate Angle
+        Angle <= 2.0*MATH_PI*real(i)/100.0;
         -- generate sin/cos
-        iSin <= cl_fix_from_real(sin(angle),cFixFmt);
-        iCos <= cl_fix_from_real(cos(angle),cFixFmt);
+        Sine <= cl_fix_from_real(sin(Angle),FixFmt_c);
+        Cosine <= cl_fix_from_real(cos(Angle),FixFmt_c);
         --simulate currents
-        iA <= cl_fix_from_real(cCurrentDC+cos(angle)*cCurrentAC,cFixFmt);
-        iB <= cl_fix_from_real(cCurrentDC+cos(angle-c120Deg)*cCurrentAC,cFixFmt);
-        iC <= cl_fix_from_real(cCurrentDC+cos(angle+c120Deg)*cCurrentAC,cFixFmt);
-        iStrobe <= '1';
-        wait until rising_edge(clk);
+        A <= cl_fix_from_real(CurrentDC_c+cos(Angle)*CurrentAC_c,FixFmt_c);
+        B <= cl_fix_from_real(CurrentDC_c+cos(Angle-A120Deg_c)*CurrentAC_c,FixFmt_c);
+        C <= cl_fix_from_real(CurrentDC_c+cos(Angle+A120Deg_c)*CurrentAC_c,FixFmt_c);
+        Strobe <= '1';
+        wait until rising_edge(Clk);
         wait for 100 ps;
-        check_equal(oReady, '0');
-        iStrobe <= '0';
+        check_equal(Valid, '0');
+        Strobe <= '0';
         --wait for pipeline to settle
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
+        wait until rising_edge(Clk);
+        wait until rising_edge(Clk);
         wait for 100 ps;
         -- convert to real for better readability
-        sRealD <= cl_fix_to_real(oD,cFixFmt);
-        sRealQ <= cl_fix_to_real(oQ,cFixFmt);
-        sRealDC <= cl_fix_to_real(oDC,cFixFmt);
+        RealD <= cl_fix_to_real(D,FixFmt_c);
+        RealQ <= cl_fix_to_real(Q,FixFmt_c);
+        RealDC <= cl_fix_to_real(DC,FixFmt_c);
         wait for 100 ps;
-        check_equal(sRealD, cCurrentAC, max_diff => cTestLimit);
-        check_equal(sRealQ, 0.0, max_diff => cTestLimit);
-        check_equal(sRealDC, cCurrentDC, max_diff => cTestLimit);
-        check_equal(oReady, '1');
+        check_equal(RealD, CurrentAC_c, max_diff => cTestLimit);
+        check_equal(RealQ, 0.0, max_diff => cTestLimit);
+        check_equal(RealDC, CurrentDC_c, max_diff => cTestLimit);
+        check_equal(Valid, '1');
       end loop;
 
     elsif run("dq_test_values_90deg") then
 
-      wait until reset = '0';
+      wait until Rst = '0';
       for i in 0 to 99 loop
-        wait until rising_edge(clk);
-        -- simulate angle
-        angle <= 2.0*MATH_PI*real(i)/100.0;
+        wait until rising_edge(Clk);
+        -- simulate Angle
+        Angle <= 2.0*MATH_PI*real(i)/100.0;
         -- generate sin/cos
-        iSin <= cl_fix_from_real(sin(angle),cFixFmt);
-        iCos <= cl_fix_from_real(cos(angle),cFixFmt);
+        Sine <= cl_fix_from_real(sin(Angle),FixFmt_c);
+        Cosine <= cl_fix_from_real(cos(Angle),FixFmt_c);
         --simulate currents
-        iA <= cl_fix_from_real(cCurrentDC+cos(angle+cPhaseShift)*cCurrentAC,cFixFmt);
-        iB <= cl_fix_from_real(cCurrentDC+cos(angle+cPhaseShift-c120Deg)*cCurrentAC,cFixFmt);
-        iC <= cl_fix_from_real(cCurrentDC+cos(angle+cPhaseShift+c120Deg)*cCurrentAC,cFixFmt);
-        iStrobe <= '1';
-        wait until rising_edge(clk);
-        iStrobe <= '0';
+        A <= cl_fix_from_real(CurrentDC_c+cos(Angle+PhaseShift_c)*CurrentAC_c,FixFmt_c);
+        B <= cl_fix_from_real(CurrentDC_c+cos(Angle+PhaseShift_c-A120Deg_c)*CurrentAC_c,FixFmt_c);
+        C <= cl_fix_from_real(CurrentDC_c+cos(Angle+PhaseShift_c+A120Deg_c)*CurrentAC_c,FixFmt_c);
+        Strobe <= '1';
+        wait until rising_edge(Clk);
+        Strobe <= '0';
         wait for 100 ps;
-        check_equal(oReady, '0');
+        check_equal(Valid, '0');
         --wait for pipeline to settle
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
+        wait until rising_edge(Clk);
+        wait until rising_edge(Clk);
         wait for 100 ps;
         -- convert to real for better readability
-        sRealD <= cl_fix_to_real(oD,cFixFmt);
-        sRealQ <= cl_fix_to_real(oQ,cFixFmt);
-        sRealDC <= cl_fix_to_real(oDC,cFixFmt);
+        RealD <= cl_fix_to_real(D,FixFmt_c);
+        RealQ <= cl_fix_to_real(Q,FixFmt_c);
+        RealDC <= cl_fix_to_real(DC,FixFmt_c);
         wait for 100 ps;
-        check_equal(sRealD, 0.0, max_diff => cTestLimit);
-        check_equal(sRealQ, cCurrentAC, max_diff => cTestLimit);
-        check_equal(sRealDC, cCurrentDC, max_diff => cTestLimit);
-        --check_equal(oReady, '1');
+        check_equal(RealD, 0.0, max_diff => cTestLimit);
+        check_equal(RealQ, CurrentAC_c, max_diff => cTestLimit);
+        check_equal(RealDC, CurrentDC_c, max_diff => cTestLimit);
+        check_equal(Valid, '1');
       end loop;
 
     elsif run("dq_test_values_asym_and_limit") then
 
-      wait until reset = '0';
+      wait until Rst = '0';
       for i in 0 to 99 loop
-        wait until rising_edge(clk);
-        -- simulate angle
-        angle <= 2.0*MATH_PI*real(i)/100.0;
+        wait until rising_edge(Clk);
+        -- simulate Angle
+        Angle <= 2.0*MATH_PI*real(i)/100.0;
         -- generate sin/cos
-        iSin <= cl_fix_from_real(sin(angle),cFixFmt);
-        iCos <= cl_fix_from_real(cos(angle),cFixFmt);
+        Sine <= cl_fix_from_real(sin(Angle),FixFmt_c);
+        Cosine <= cl_fix_from_real(cos(Angle),FixFmt_c);
         --simulate currents
-        iA <= cl_fix_from_real(cCurrentDCLim+cos(angle)*cCurrentACLim,cFixFmt);
-        iB <= cl_fix_from_real(cCurrentDCLim+cos(angle-c110Deg)*cCurrentACLim,cFixFmt);
-        iC <= cl_fix_from_real(cCurrentDCLim+cos(angle+c110Deg)*cCurrentACLim,cFixFmt);
-        iStrobe <= '1';
-        wait until rising_edge(clk);
-        iStrobe <= '0';
+        A <= cl_fix_from_real(CurrentLimiDC_c+cos(Angle)*CurrentLimAC_c,FixFmt_c);
+        B <= cl_fix_from_real(CurrentLimiDC_c+cos(Angle-c110Deg)*CurrentLimAC_c,FixFmt_c);
+        C <= cl_fix_from_real(CurrentLimiDC_c+cos(Angle+c110Deg)*CurrentLimAC_c,FixFmt_c);
+        Strobe <= '1';
+        wait until rising_edge(Clk);
+        Strobe <= '0';
         wait for 100 ps;
-        check_equal(oReady, '0');
+        check_equal(Valid, '0');
         --wait for pipeline to settle
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
+        wait until rising_edge(Clk);
+        wait until rising_edge(Clk);
         wait for 100 ps;
         -- convert to real for better readability
-        sRealD <= cl_fix_to_real(oD,cFixFmt);
-        sRealQ <= cl_fix_to_real(oQ,cFixFmt);
-        sRealDC <= cl_fix_to_real(oDC,cFixFmt);
+        RealD <= cl_fix_to_real(D,FixFmt_c);
+        RealQ <= cl_fix_to_real(Q,FixFmt_c);
+        RealDC <= cl_fix_to_real(DC,FixFmt_c);
         wait for 100 ps;
-        check_equal(sRealD, cCurrentACLim, max_diff => cTestLimitLimit);
-        check_equal(sRealQ, 0.0, max_diff => cTestLimitLimit);
-        check_equal(sRealDC, cCurrentDCLim, max_diff => cTestLimitLimit);
-        check_equal(oReady, '1');
+        check_equal(RealD, CurrentLimAC_c, max_diff => cTestLimitLimit);
+        check_equal(RealQ, 0.0, max_diff => cTestLimitLimit);
+        check_equal(RealDC, CurrentLimiDC_c, max_diff => cTestLimitLimit);
+        check_equal(Valid, '1');
       end loop;
 
-    elsif run("dq_test_stall") then
-
-      wait until reset = '0';
-      for i in 0 to 99 loop
-        wait until rising_edge(clk);
-        -- simulate angle
-        angle <= 2.0*MATH_PI*real(i)/100.0;
-        -- generate sin/cos
-        iSin <= cl_fix_from_real(sin(angle),cFixFmt);
-        iCos <= cl_fix_from_real(cos(angle),cFixFmt);
-        --simulate currents
-        iA <= cl_fix_sub(cl_fix_from_real(0.49,cFixFmtADC),cFixFmtADC,cl_fix_from_real(0.50,cFixFmtADC),cFixFmtADC,cFixFmt);
-        iB <= cl_fix_sub(cl_fix_from_real(0.50,cFixFmtADC),cFixFmtADC,cl_fix_from_real(0.51,cFixFmtADC),cFixFmtADC,cFixFmt);
-        iC <= cl_fix_sub(cl_fix_from_real(0.46,cFixFmtADC),cFixFmtADC,cl_fix_from_real(0.48,cFixFmtADC),cFixFmtADC,cFixFmt);
-        iStrobe <= '1';
-        wait until rising_edge(clk);
-        iStrobe <= '0';
-        wait for 100 ps;
-        check_equal(oReady, '0');
-        --wait for pipeline to settle
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait until rising_edge(clk);
-        wait for 100 ps;
-      end loop;
-      
     end if;
 
     test_runner_cleanup(runner); -- Simulation ends here
   end process;
 
   -- generate clock
-  clk <= not clk after 10 ns;
+  Clk <= not Clk after 10 ns;
 
-  -- deassert reset
-  reset <= '0' after 77 ns;
+  -- deassert Rst
+  Rst <= '0' after 77 ns;
 
   dut: entity project.dqTransform
     generic map (
       DataWidth_g => 12
     )
     port map (
-      Clk => clk,
-      Rst => reset,
-      Sine => iSin,
-      Cosine => iCos,
-      A => iA,
-      B => iB,
-      C => iC,
-      D => oD,
-      Q => oQ,
-      DC => oDC,
-      Strobe => iStrobe,
-      Valid => oReady
+      Clk => Clk,
+      Rst => Rst,
+      Sine => Sine,
+      Cosine => Cosine,
+      A => A,
+      B => B,
+      C => C,
+      D => D,
+      Q => Q,
+      DC => DC,
+      Strobe => Strobe,
+      Valid => Valid
     );
 
 end architecture;

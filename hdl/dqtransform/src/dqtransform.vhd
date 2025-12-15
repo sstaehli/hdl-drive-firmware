@@ -5,7 +5,8 @@
 ---------------------------------------------------------------------------------------------------
 -- Description
 ---------------------------------------------------------------------------------------------------
--- This entity implements a Space Vector PWM generator
+-- This entity implements the Clark-PArke and D/Q transformed rquired for
+-- field-oriented control (FOC).
 
 ---------------------------------------------------------------------------------------------------
 -- Libraries
@@ -70,31 +71,21 @@ architecture rtl of dqTransform is
     constant MtxCPC2_c : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0) := cl_fix_from_real(cMtxPrescaler * (           0.5), FixFormat_c); -- = 1/3
     constant MtxCPC3_c : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0) := cl_fix_from_real(cMtxPrescaler * (           0.5), FixFormat_c); -- = 1/3
 
-    constant NumStages_c : integer := 4; -- processing takes 3 pipeline stages (Valid on 4th edge after strobe)
+    constant NumStages_c : integer := 2; -- processing takes 3 pipeline stages (Valid on 4th edge after strobe)
     
     type SummandArray_t is array (0 to 2) of std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
 
     type TwoProcess_r is record
-        AlphaF0 : SummandArray_t;
-        AlphaF1 : SummandArray_t;
-        AlphaSumF0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        AlphaSumF1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        BetaF0 : SummandArray_t;
-        BetaF1 : SummandArray_t;
-        BetaSumF0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        BetaSumF1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        GammaF0 : SummandArray_t;        
-        GammaF1 : SummandArray_t;
-        GammaSumF0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);        
-        GammaSumF1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQA1F0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQA1F1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQA2F0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQA2F1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQB1F0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQB1F1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQB2F0 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
-        MtxDQB2F1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        Alpha : SummandArray_t;
+        AlphaSum : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        Beta : SummandArray_t;
+        BetaSum : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        Gamma : SummandArray_t;
+        GammaSum : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        MtxDQA1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        MtxDQA2 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        MtxDQB1 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
+        MtxDQB2 : std_logic_vector(cl_fix_width(IntFixFormat_c)-1 downto 0);
         Valid : std_logic_vector(NumStages_c downto 0);
         D : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
         Q : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
@@ -117,75 +108,59 @@ begin
         -- *** Default Values ***
 
         -- clarke transform (pipeline stage 1)
-        v.AlphaF0(0) := cl_fix_mult(MtxCPA1_c, FixFormat_c, A, FixFormat_c, IntFixFormat_c);
-        v.AlphaF0(1) := cl_fix_mult(MtxCPA2_c, FixFormat_c, B, FixFormat_c, IntFixFormat_c);
-        v.AlphaF0(2) := cl_fix_mult(MtxCPA3_c, FixFormat_c, C, FixFormat_c, IntFixFormat_c);
+        v.Alpha(0) := cl_fix_mult(MtxCPA1_c, FixFormat_c, A, FixFormat_c, IntFixFormat_c);
+        v.Alpha(1) := cl_fix_mult(MtxCPA2_c, FixFormat_c, B, FixFormat_c, IntFixFormat_c);
+        v.Alpha(2) := cl_fix_mult(MtxCPA3_c, FixFormat_c, C, FixFormat_c, IntFixFormat_c);
 
-        v.BetaF0(0)  := cl_fix_mult(MtxCPB1_c, FixFormat_c, A, FixFormat_c, IntFixFormat_c);
-        v.BetaF0(1)  := cl_fix_mult(MtxCPB2_c, FixFormat_c, B, FixFormat_c, IntFixFormat_c);
-        v.BetaF0(2)  := cl_fix_mult(MtxCPB3_c, FixFormat_c, C, FixFormat_c, IntFixFormat_c);
+        v.Beta(0)  := cl_fix_mult(MtxCPB1_c, FixFormat_c, A, FixFormat_c, IntFixFormat_c);
+        v.Beta(1)  := cl_fix_mult(MtxCPB2_c, FixFormat_c, B, FixFormat_c, IntFixFormat_c);
+        v.Beta(2)  := cl_fix_mult(MtxCPB3_c, FixFormat_c, C, FixFormat_c, IntFixFormat_c);
         
-        v.GammaF0(0) := cl_fix_mult(MtxCPC1_c, FixFormat_c, A, FixFormat_c, IntFixFormat_c);
-        v.GammaF0(1) := cl_fix_mult(MtxCPC2_c, FixFormat_c, B, FixFormat_c, IntFixFormat_c);
-        v.GammaF0(2) := cl_fix_mult(MtxCPC3_c, FixFormat_c, C, FixFormat_c, IntFixFormat_c);
-
-        -- pipeline
-        v.AlphaF1 := r.AlphaF0;
-        v.BetaF1  := r.BetaF0;
-        v.GammaF1 := r.GammaF0;
+        v.Gamma(0) := cl_fix_mult(MtxCPC1_c, FixFormat_c, A, FixFormat_c, IntFixFormat_c);
+        v.Gamma(1) := cl_fix_mult(MtxCPC2_c, FixFormat_c, B, FixFormat_c, IntFixFormat_c);
+        v.Gamma(2) := cl_fix_mult(MtxCPC3_c, FixFormat_c, C, FixFormat_c, IntFixFormat_c);
 
         -- simplified park transform (pipeline stage 1)
-        v.MtxDQA1F0 := cl_fix_resize(Cosine, FixFormat_c, IntFixFormat_c);
-        v.MtxDQA2F0 := cl_fix_resize(Sine, FixFormat_c, IntFixFormat_c);
-        v.MtxDQB1F0 := cl_fix_neg(Sine, FixFormat_c, IntFixFormat_c);
-        v.MtxDQB2F0 := cl_fix_resize(Cosine, FixFormat_c, IntFixFormat_c);
-
-        -- pipeline
-        v.MtxDQA1F1 := r.MtxDQA1F0;
-        v.MtxDQA2F1 := r.MtxDQA2F0;
-        v.MtxDQB1F1 := r.MtxDQB1F0;
-        v.MtxDQB2F1 := r.MtxDQB2F0;
+        v.MtxDQA1 := cl_fix_resize(Cosine, FixFormat_c, IntFixFormat_c);
+        v.MtxDQA2 := cl_fix_resize(Sine, FixFormat_c, IntFixFormat_c);
+        v.MtxDQB1 := cl_fix_neg(Sine, FixFormat_c, IntFixFormat_c);
+        v.MtxDQB2 := cl_fix_resize(Cosine, FixFormat_c, IntFixFormat_c);
 
         -- clarke transform sumup (pipeline stage 2)
-        v.AlphaSumF0 := cl_fix_add(
+        v.AlphaSum := cl_fix_add(
             cl_fix_add(
-                r.AlphaF1(0), IntFixFormat_c,
-                r.AlphaF1(1), IntFixFormat_c,
+                r.Alpha(0), IntFixFormat_c,
+                r.Alpha(1), IntFixFormat_c,
                 IntFixFormat_c), IntFixFormat_c,
-            r.AlphaF1(2), IntFixFormat_c,
+            r.Alpha(2), IntFixFormat_c,
             IntFixFormat_c);
             
-        v.BetaSumF0  := cl_fix_add(
+        v.BetaSum  := cl_fix_add(
             cl_fix_add(
-                r.BetaF1(0), IntFixFormat_c,
-                r.BetaF1(1), IntFixFormat_c,
+                r.Beta(0), IntFixFormat_c,
+                r.Beta(1), IntFixFormat_c,
                 IntFixFormat_c), IntFixFormat_c,
-            r.BetaF1(2), IntFixFormat_c,
+            r.Beta(2), IntFixFormat_c,
             IntFixFormat_c);
 
-        v.GammaSumF0 := cl_fix_add(
+        v.GammaSum := cl_fix_add(
             cl_fix_add(
-                r.GammaF1(0), IntFixFormat_c,
-                r.GammaF1(1), IntFixFormat_c,
+                r.Gamma(0), IntFixFormat_c,
+                r.Gamma(1), IntFixFormat_c,
                 IntFixFormat_c), IntFixFormat_c,
-            r.GammaF1(2), IntFixFormat_c,
+            r.Gamma(2), IntFixFormat_c,
             IntFixFormat_c);
-
-        -- pipeline
-        v.AlphaSumF1 := r.AlphaSumF0;
-        v.BetaSumF1  := r.BetaSumF0;
-        v.GammaSumF1 := r.GammaSumF0;
 
         -- calc outputs
         v.D := cl_fix_add(
-            cl_fix_mult(r.MtxDQA1F1, IntFixFormat_c, r.AlphaSumF1, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
-            cl_fix_mult(r.MtxDQA2F1, IntFixFormat_c, r.BetaSumF1, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
+            cl_fix_mult(r.MtxDQA1, IntFixFormat_c, r.AlphaSum, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
+            cl_fix_mult(r.MtxDQA2, IntFixFormat_c, r.BetaSum, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
             FixFormat_c);
         v.Q := cl_fix_add(
-            cl_fix_mult(r.MtxDQB1F1, IntFixFormat_c, r.AlphaSumF1, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
-            cl_fix_mult(r.MtxDQB2F1, IntFixFormat_c, r.BetaSumF1, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
+            cl_fix_mult(r.MtxDQB1, IntFixFormat_c, r.AlphaSum, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
+            cl_fix_mult(r.MtxDQB2, IntFixFormat_c, r.BetaSum, IntFixFormat_c, IntFixFormat_c), IntFixFormat_c, 
             FixFormat_c);
-        v.DC := cl_fix_resize(r.GammaSumF1, IntFixFormat_c, FixFormat_c);
+        v.DC := cl_fix_resize(r.GammaSum, IntFixFormat_c, FixFormat_c);
 
         v.Valid := r.Valid(r.Valid'left-1 downto 0) & Strobe;
 
