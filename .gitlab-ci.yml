@@ -9,4 +9,4 @@ unit_test:
   stage: test
   image: hdlc/nvc
   script:
-    - cd hdl/test && python3 ./run.py
+    - cd test && python3 ./run.py
