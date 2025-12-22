@@ -7,6 +7,6 @@ variables:
 
 unit_test:
   stage: test
-  image: ghdl/vunit:llvm-master
+  image: hdlc/nvc
   script:
     - cd hdl/test && python3 ./run.py
