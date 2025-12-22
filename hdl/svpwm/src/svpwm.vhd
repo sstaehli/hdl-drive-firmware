@@ -1,5 +1,5 @@
 library IEEE;
-  use IEEE.STD_LOGIC_1164.all;
+  use IEEE.std_logic_1164.all;
   use IEEE.NUMERIC_STD.all;
   use IEEE.MATH_REAL.all;
 
@@ -9,61 +9,56 @@ library olo;
 
 entity SVPWM is
   generic (
-    gSysClkMHz : natural := 125;
-    gPWMFreqkHz : natural := 8;
-    gDeadTimeNs : natural := 800;
-    gDataWidth : natural := 12);
+    SysClkMHz_g   : natural;
+    PWMFreqkHz_g  : natural;
+    DeadTimeNs_g  : natural;
+    DataWidth_g   : natural
+  );
   port (
-    reset_n : in STD_LOGIC;
-    clk : in STD_LOGIC;
-    iUq : in STD_LOGIC_VECTOR(gDataWidth-1 downto 0);
-    iUd : in STD_LOGIC_VECTOR(gDataWidth-1 downto 0);
-    iSin : in STD_LOGIC_VECTOR(gDataWidth-1 downto 0);
-    iCos : in STD_LOGIC_VECTOR(gDataWidth-1 downto 0);
-    iEn : in STD_LOGIC;
-    iFault_n : in STD_LOGIC;
+    Clk           : in    std_logic;
+    Rst           : in    std_logic;
+    Uq            : in    std_logic_vector(DataWidth_g-1 downto 0);
+    iUd           : in    std_logic_vector(DataWidth_g-1 downto 0);
+    Sine          : in    std_logic_vector(DataWidth_g-1 downto 0);
+    Cosine        : in    std_logic_vector(DataWidth_g-1 downto 0);
+    EnableIn      : in    std_logic;
+    FaultIn_N     : in    std_logic;
     
-    oPWM_A_L : out STD_LOGIC;
-    oPWM_A_H : out STD_LOGIC;
-    oPWM_B_L : out STD_LOGIC;
-    oPWM_B_H : out STD_LOGIC;
-    oPWM_C_L : out STD_LOGIC;
-    oPWM_C_H : out STD_LOGIC;
-    oADCTriggerLSOn : out STD_LOGIC;
-    oADCTriggerHSOn : out STD_LOGIC;
-    oEn : out STD_LOGIC;
-    oFault_n : out STD_LOGIC
+    PWM_A_L : out std_logic;
+    PWM_A_H : out std_logic;
+    PWM_B_L : out std_logic;
+    PWM_B_H : out std_logic;
+    PWM_C_L : out std_logic;
+    PWM_C_H : out std_logic;
+    ADCTriggerLSOn : out std_logic;
+    ADCTriggerHSOn : out std_logic;
+    oEn : out std_logic;
+    oFault_n : out std_logic
   );
 end entity SVPWM;
 
 architecture Behavioral of SVPWM is
 
-  constant cTimerMax : natural := (1000*gSysClkMHz)/(2*gPWMFreqkHz);
-  constant cTimerWidth : natural := natural(ceil(log2(real(cTimerMax))));
-  constant cDeadTime : natural := (gSysClkMHz * gDeadTimeNs)/1000;
-  constant cMaxDC : real := 0.5 - real(4 * gDeadTimeNs * gPWMFreqkHz)/1.0e6;
+  constant TimerMax_c   : natural := (1000*SysClkMHz_g)/(2*PWMFreqkHz_g);
+  constant TimerWidth_c : natural := natural(ceil(log2(real(TimerMax_c))));
+  constant DeadTime_c   : natural := (SysClkMHz_g * DeadTimeNs_g)/1000;
+  constant MaxDC_c      : real := 0.5 - real(4 * DeadTimeNs_g * PWMFreqkHz_g)/1.0e6;
 
-  constant cFixFmt : FixFormat_t := (1,0,gDataWidth-1);
-  constant cFixFmtInt : FixFormat_t := (1,1,gDataWidth-1);
-  constant cFixFmtOut : FixFormat_t := (0,cTimerWidth,0);
+  constant FixFmt_c     : FixFormat_t := (1,0,DataWidth_g-1);
+  constant FixFmtInt_c  : FixFormat_t := (1,1,DataWidth_g-1);
+  constant FixFmtOut_c  : FixFormat_t := (0,TimerWidth_c,0);
 
-  constant cMtx11 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(1.0              ,cFixFmt); -- = 1
-  constant cMtx12 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(0.0              ,cFixFmt); -- = 0
-  constant cMtx21 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(-0.5             ,cFixFmt); -- = 1/2
-  constant cMtx22 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(sqrt(3.0)/2.0    ,cFixFmt); -- = sqrt(3)/2
-  constant cMtx31 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(-0.5             ,cFixFmt); -- = 1/2
-  constant cMtx32 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(-sqrt(3.0)/2.0   ,cFixFmt); -- = -sqrt(3)/2
-  constant cPwmDC : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := cl_fix_from_real(0.5              ,cFixFmt); -- = 1/2
+  constant PwmDc_c : std_logic_vector(cl_fix_width(FixFmt_c)-1 downto 0) := cl_fix_from_real(0.5              ,FixFmt_c); -- = 1/2
 
-  signal sTimerCounter : integer range 0 to cTimerMax := 0;
+  signal sTimerCounter : integer range 0 to TimerMax_c := 0;
   signal sCountDirection : std_logic := '0';
-  signal sCompA, sCompB, sCompC : integer range 0 to cTimerMax := 0;  
+  signal sCompA, sCompB, sCompC : integer range 0 to TimerMax_c := 0;  
 
-  signal sUaPWM0, sUbPWM0, sUcPWM0, sUaPWM1, sUbPWM1, sUcPWM1 : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := (others => '0');
-  signal sUaPWM2, sUbPWM2, sUcPWM2 : std_logic_vector(cTimerWidth-1 downto 0) := (others => '0');
-  signal sUq, sUd, sSin, sCos : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := (others => '0');
-  signal sAlpha0, sBeta0, sAlpha1, sBeta1 : std_logic_vector(cl_fix_width(cFixFmtInt)-1 downto 0) := (others => '0');
-  signal sUa0, sUb0, sUc0, sUa1, sUb1, sUc1 : std_logic_vector(cl_fix_width(cFixFmtInt)-1 downto 0) := (others => '0');
+  signal sUaPWM0, sUbPWM0, sUcPWM0, sUaPWM1, sUbPWM1, sUcPWM1 : std_logic_vector(cl_fix_width(FixFmt_c)-1 downto 0) := (others => '0');
+  signal sUaPWM2, sUbPWM2, sUcPWM2 : std_logic_vector(TimerWidth_c-1 downto 0) := (others => '0');
+  signal sUq, sUd, sSin, sCos : std_logic_vector(cl_fix_width(FixFmt_c)-1 downto 0) := (others => '0');
+  signal sAlpha0, sBeta0, sAlpha1, sBeta1 : std_logic_vector(cl_fix_width(FixFmtInt_c)-1 downto 0) := (others => '0');
+  signal sUa0, sUb0, sUc0, sUa1, sUb1, sUc1 : std_logic_vector(cl_fix_width(FixFmtInt_c)-1 downto 0) := (others => '0');
   signal sEnReady : std_logic := '0';  
     
   signal sPWM_A_L, sPWM_A_H, sPWM_B_L, sPWM_B_H, sPWM_C_L, sPWM_C_H : std_logic := '0';
@@ -114,7 +109,7 @@ begin
     IF sCountDirection = '0' THEN
       --hochzaehlen
       sTimerCounter <= sTimerCounter +1; 
-      IF sTimerCounter =  cTimerMax-1 THEN
+      IF sTimerCounter =  TimerMax_c-1 THEN
         sCountDirection <= '1';
       END IF;      
     ELSE
@@ -128,13 +123,13 @@ begin
     --Compare
     IF sTimerCounter <= sCompA and sCountDirection = '0' THEN
       sPWM_A_H <= '1';
-    ELSIF sTimerCounter <= (sCompA - cDeadTime) and sCountDirection = '1' THEN
+    ELSIF sTimerCounter <= (sCompA - DeadTime_c) and sCountDirection = '1' THEN
       sPWM_A_H <= '1';
     ELSE
       sPWM_A_H <= '0';
     END IF;    
     
-    IF sTimerCounter > (sCompA + cDeadTime) and sCountDirection = '0' THEN
+    IF sTimerCounter > (sCompA + DeadTime_c) and sCountDirection = '0' THEN
       sPWM_A_L <= '1';
     ELSIF sTimerCounter > sCompA and sCountDirection = '1' THEN
       sPWM_A_L <= '1';
@@ -144,13 +139,13 @@ begin
 
     IF sTimerCounter <= sCompB and sCountDirection = '0' THEN
       sPWM_B_H <= '1';
-    ELSIF sTimerCounter <= (sCompB - cDeadTime) and sCountDirection = '1' THEN
+    ELSIF sTimerCounter <= (sCompB - DeadTime_c) and sCountDirection = '1' THEN
       sPWM_B_H <= '1';
     ELSE
       sPWM_B_H <= '0';
     END IF;    
     
-    IF sTimerCounter > (sCompB + cDeadTime) and sCountDirection = '0' THEN
+    IF sTimerCounter > (sCompB + DeadTime_c) and sCountDirection = '0' THEN
       sPWM_B_L <= '1';
     ELSIF sTimerCounter > sCompB and sCountDirection = '1' THEN
       sPWM_B_L <= '1';
@@ -160,13 +155,13 @@ begin
     
     IF sTimerCounter <= sCompC and sCountDirection = '0' THEN
       sPWM_C_H <= '1';
-    ELSIF sTimerCounter <= (sCompC - cDeadTime) and sCountDirection = '1' THEN
+    ELSIF sTimerCounter <= (sCompC - DeadTime_c) and sCountDirection = '1' THEN
       sPWM_C_H <= '1';
     ELSE
       sPWM_C_H <= '0';
     END IF;    
     
-    IF sTimerCounter > (sCompC + cDeadTime) and sCountDirection = '0' THEN
+    IF sTimerCounter > (sCompC + DeadTime_c) and sCountDirection = '0' THEN
       sPWM_C_L <= '1';
     ELSIF sTimerCounter > sCompC and sCountDirection = '1' THEN
       sPWM_C_L <= '1';
@@ -174,16 +169,16 @@ begin
       sPWM_C_L <= '0';
     END IF; 
     
-    IF sTimerCounter = (cTimerMax-1) and sCountDirection = '0' THEN
-      oADCTriggerLSOn <= '1';
+    IF sTimerCounter = (TimerMax_c-1) and sCountDirection = '0' THEN
+      ADCTriggerLSOn <= '1';
     ELSE
-      oADCTriggerLSOn <= '0';
+      ADCTriggerLSOn <= '0';
     END IF;  
     
     IF sTimerCounter = 1 and sCountDirection = '1' THEN
-      oADCTriggerHSOn <= '1';
+      ADCTriggerHSOn <= '1';
     ELSE
-      oADCTriggerHSOn <= '0';
+      ADCTriggerHSOn <= '0';
     END IF;
 
     --Reset      
@@ -195,8 +190,8 @@ begin
       sPWM_B_H  <=  '0';
       sPWM_C_L  <=  '0';
       sPWM_C_H  <=  '0';
-      oADCTriggerLSOn <=  '0';
-      oADCTriggerHSOn <=  '0';
+      ADCTriggerLSOn <=  '0';
+      ADCTriggerHSOn <=  '0';
     END IF;
 
   END IF;
@@ -206,66 +201,42 @@ p_combinatorial: process(sSin, sCos, sUq, sUd, sAlpha1, sBeta1, sUa1, sUb1, sUc1
                           sUaPWM1, sUbPWM1, sUcPWM1,
                           sPWM_A_L, sPWM_A_H, sPWM_B_L, sPWM_B_H, sPWM_C_L, sPWM_C_H,
                           iEn)
-    variable negSin, posCos, posSin : std_logic_vector(cl_fix_width(cFixFmtInt)-1 downto 0);  
+    variable negSin, posCos, posSin : std_logic_vector(cl_fix_width(FixFmtInt_c)-1 downto 0);  
 begin  
 
   -- Pipeline stage 1: inv Park Transformation
-  negSin := cl_fix_neg(sSin,cFixFmt,cFixFmtInt);   
-  posCos := cl_fix_resize(sCos,cFixFmt,cFixFmtInt);
-  posSin := cl_fix_resize(sSin,cFixFmt,cFixFmtInt);
+  negSin := cl_fix_neg(sSin,FixFmt_c,FixFmtInt_c);   
+  posCos := cl_fix_resize(sCos,FixFmt_c,FixFmtInt_c);
+  posSin := cl_fix_resize(sSin,FixFmt_c,FixFmtInt_c);
 
-  -- calc results
-  sAlpha0 <= cl_fix_add(
-              cl_fix_mult(posCos,cFixFmtInt,sUd,cFixFmt,cFixFmtInt),cFixFmtInt,
-              cl_fix_mult(negSin,cFixFmtInt,sUq,cFixFmt,cFixFmtInt),cFixFmtInt,
-              cFixFmtInt);
-  sBeta0 <= cl_fix_add(
-              cl_fix_mult(posSin,cFixFmtInt,sUd,cFixFmt,cFixFmtInt),cFixFmtInt,
-              cl_fix_mult(posCos,cFixFmtInt,sUq,cFixFmt,cFixFmtInt),cFixFmtInt,
-              cFixFmtInt);
-
-  --Pipeline stage 2: inv Clarke Transformation
-  sUa0 <= cl_fix_add(
-      cl_fix_mult(cMtx11,cFixFmt,sAlpha1,cFixFmtInt,cFixFmtInt),cFixFmtInt,
-      cl_fix_mult(cMtx12,cFixFmt,sBeta1,cFixFmtInt,cFixFmtInt),cFixFmtInt,
-      cFixFmtInt);
-  
-  sUb0 <= cl_fix_add(
-      cl_fix_mult(cMtx21,cFixFmt,sAlpha1,cFixFmtInt,cFixFmtInt),cFixFmtInt,
-      cl_fix_mult(cMtx22,cFixFmt,sBeta1,cFixFmtInt,cFixFmtInt),cFixFmtInt,
-      cFixFmtInt);
-
-  sUc0 <= cl_fix_add(
-      cl_fix_mult(cMtx31,cFixFmt,sAlpha1,cFixFmtInt,cFixFmtInt),cFixFmtInt,
-      cl_fix_mult(cMtx32,cFixFmt,sBeta1,cFixFmtInt,cFixFmtInt),cFixFmtInt,
-      cFixFmtInt);
+ 
       
   -- Pipeline stage 3: duty cycle calculation
   -- Duty cycle = 0.5 + Ux * (max. Duty Cycle - 0.5), e. g. 0.5 + Ux * 0.48 if max. DC is 98%
   sUaPWM0 <= cl_fix_add(
-    cl_fix_mult(sUa1,cFixFmtInt,cl_fix_from_real(cMaxDC,cFixFmtInt),cFixFmtInt,cFixFmt), cFixFmt,
-    cl_fix_from_real(0.5,cFixFmt), cFixFmt, cFixFmt);
+    cl_fix_mult(sUa1,FixFmtInt_c,cl_fix_from_real(MaxDC_c,FixFmtInt_c),FixFmtInt_c,FixFmt_c), FixFmt_c,
+    cl_fix_from_real(0.5,FixFmt_c), FixFmt_c, FixFmt_c);
 
   sUbPWM0 <= cl_fix_add(
-    cl_fix_mult(sUb1,cFixFmtInt,cl_fix_from_real(cMaxDC,cFixFmtInt),cFixFmtInt,cFixFmt), cFixFmt,
-    cl_fix_from_real(0.5,cFixFmt), cFixFmt, cFixFmt);
+    cl_fix_mult(sUb1,FixFmtInt_c,cl_fix_from_real(MaxDC_c,FixFmtInt_c),FixFmtInt_c,FixFmt_c), FixFmt_c,
+    cl_fix_from_real(0.5,FixFmt_c), FixFmt_c, FixFmt_c);
                 
   sUcPWM0 <= cl_fix_add(
-    cl_fix_mult(sUc1,cFixFmtInt,cl_fix_from_real(cMaxDC,cFixFmtInt),cFixFmtInt,cFixFmt), cFixFmt,
-    cl_fix_from_real(0.5,cFixFmt), cFixFmt, cFixFmt);
+    cl_fix_mult(sUc1,FixFmtInt_c,cl_fix_from_real(MaxDC_c,FixFmtInt_c),FixFmtInt_c,FixFmt_c), FixFmt_c,
+    cl_fix_from_real(0.5,FixFmt_c), FixFmt_c, FixFmt_c);
 
   -- Pipeline stage 4: scale to counter
-  sUaPWM2 <= cl_fix_mult(sUaPWM1,cFixFmt,cl_fix_from_integer(cTimerMax,cFixFmtOut),cFixFmtOut, cFixFmtOut);
-  sUbPWM2 <= cl_fix_mult(sUbPWM1,cFixFmt,cl_fix_from_integer(cTimerMax,cFixFmtOut),cFixFmtOut, cFixFmtOut);
-  sUcPWM2 <= cl_fix_mult(sUcPWM1,cFixFmt,cl_fix_from_integer(cTimerMax,cFixFmtOut),cFixFmtOut, cFixFmtOut);
+  sUaPWM2 <= cl_fix_mult(sUaPWM1,FixFmt_c,cl_fix_from_integer(TimerMax_c,FixFmtOut_c),FixFmtOut_c, FixFmtOut_c);
+  sUbPWM2 <= cl_fix_mult(sUbPWM1,FixFmt_c,cl_fix_from_integer(TimerMax_c,FixFmtOut_c),FixFmtOut_c, FixFmtOut_c);
+  sUcPWM2 <= cl_fix_mult(sUcPWM1,FixFmt_c,cl_fix_from_integer(TimerMax_c,FixFmtOut_c),FixFmtOut_c, FixFmtOut_c);
 
   -- output signal assignement  
-  oPWM_A_L <= sPWM_A_L;
-  oPWM_A_H <= sPWM_A_H; 
-  oPWM_B_L <= sPWM_B_L;
-  oPWM_B_H <= sPWM_B_H;
-  oPWM_C_L <= sPWM_C_L;
-  oPWM_C_H <= sPWM_C_H;
+  PWM_A_L <= sPWM_A_L;
+  PWM_A_H <= sPWM_A_H; 
+  PWM_B_L <= sPWM_B_L;
+  PWM_B_H <= sPWM_B_H;
+  PWM_C_L <= sPWM_C_L;
+  PWM_C_H <= sPWM_C_H;
                 
   -- Fault signal passtrough
   oFault_n <= iFault_n;

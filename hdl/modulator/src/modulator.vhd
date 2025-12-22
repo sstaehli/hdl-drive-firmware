@@ -45,22 +45,22 @@ architecture rtl of Modulator is
     -- sin(-a) = sin(360-a)
     constant SinTableWidth_c    : integer       := minimum(LutWidth_g, DataWidth_g-1);
     constant SinTableSize_c     : natural       := 2**(SinTableWidth_c);
-    constant FixFmt_c           : FixFormat_t   := (1, 0, DataWidth_g-1);
+    constant FixFormat_c        : FixFormat_t   := (1, 0, DataWidth_g-1);
     constant RemainderFormat_c  : FixFormat_t   := (0, 0, DataWidth_g-1-SinTableWidth_c);
     constant A90Deg_c           : natural       := (2**(DataWidth_g-1)-1)/4;
 
     -- define discrete sSine values of one whole period (= table size)
-	type SinLut_t is array (0 to SinTableSize_c-1) of std_logic_vector(cl_fix_width(FixFmt_c)-1 downto 0);
+	type SinLut_t is array (0 to SinTableSize_c-1) of std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
 	signal SinTable : SinLut_t;
     
     type TwoProcess_r is record
         Angle           : std_logic_vector(DataWidth_g-1 downto 0);
-        SineLutVal      : unsigned(cl_fix_width(FixFmt_c)-1 downto 0);
-        SineLinearSeg   : unsigned(cl_fix_width(FixFmt_c)-1 downto 0);
-        CosineLutVal    : unsigned(cl_fix_width(FixFmt_c)-1 downto 0);
-        CosineLinearSeg : unsigned(cl_fix_width(FixFmt_c)-1 downto 0);
-        Sine            : unsigned(cl_fix_width(FixFmt_c)-1 downto 0);
-        Cosine          : unsigned(cl_fix_width(FixFmt_c)-1 downto 0);
+        SineLutVal      : unsigned(cl_fix_width(FixFormat_c)-1 downto 0);
+        SineLinearSeg   : unsigned(cl_fix_width(FixFormat_c)-1 downto 0);
+        CosineLutVal    : unsigned(cl_fix_width(FixFormat_c)-1 downto 0);
+        CosineLinearSeg : unsigned(cl_fix_width(FixFormat_c)-1 downto 0);
+        Sine            : unsigned(cl_fix_width(FixFormat_c)-1 downto 0);
+        Cosine          : unsigned(cl_fix_width(FixFormat_c)-1 downto 0);
     end record;
 
     signal r, r_next : TwoProcess_r;
@@ -72,8 +72,12 @@ begin
     -----------------------------------------------------------------------------------------------
     -- create array with sSine values for sin
     -- cos will be determined with sin(a) --> cos(a) = sin(90-a)
+    assert SinTableWidth_c > 2
+      report "LUT size must be greater or equal to 3"
+      severity error;
+
     table : for i in 0 to SinTableSize_c-1 generate
-        SinTable(i) <= cl_fix_from_real(sin(2.0*MATH_PI*real(i)/real(SinTableSize_c)),FixFmt_c);
+        SinTable(i) <= cl_fix_from_real(sin(2.0*MATH_PI*real(i)/real(SinTableSize_c)),FixFormat_c);
     end generate table;
 
     -----------------------------------------------------------------------------------------------
@@ -122,13 +126,13 @@ begin
         end if;
             
         v.Sine := r.SineLutVal + unsigned(cl_fix_mult(
-                std_logic_vector(r.SineLinearSeg), FixFmt_c,
+                std_logic_vector(r.SineLinearSeg), FixFormat_c,
                 aRemainder, RemainderFormat_c,
-                FixFmt_c));
+                FixFormat_c));
         v.Cosine := r.CosineLutVal + unsigned(cl_fix_mult(
-                std_logic_vector(r.CosineLinearSeg), FixFmt_c,
+                std_logic_vector(r.CosineLinearSeg), FixFormat_c,
                 aRemainder, RemainderFormat_c,
-                FixFmt_c));
+                FixFormat_c));
 
         r_next <= v;
     end process p_combinatorial;

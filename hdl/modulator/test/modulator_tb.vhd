@@ -13,47 +13,50 @@ library project;
   use project.project_pkg.all;
 
 entity modulator_tb is
-  generic (runner_cfg : string);
+  generic (
+    runner_cfg : string;
+    DataWidth_g : natural := 12;
+    LutWidth_g : natural := 4;
+    TestLimit_g : real := 0.02
+  );
 end entity;
 
 architecture tb of modulator_tb is
 
-  constant cFixFmt : FixFormat_t := (1,0,11);
-
-  constant TestLimitTable_c : real := 0.01;
-  constant TestLimitInterpol_c : real := 0.05;
+  constant FixFormat_c : FixFormat_t := (1, 0, DataWidth_g-1);
+  constant DiscreteValues_c : natural := 2**cl_fix_width(FixFormat_c);
 
   signal Clk : std_logic := '0';
-  signal Angle : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0) := (others => '0');
-  signal sine_table, sine_interpol, cosine_table, cosine_interpol : std_logic_vector(cl_fix_width(cFixFmt)-1 downto 0);
-  signal sRealSinRef, sRealCosRef, sRealSinTable, sRealCosTable, sRealSinInterpol, sRealCosInterpol : real;
+  signal Angle : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0) := (others => '0');
+  signal Sine, Cosine : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
+  signal RealSine, RealCosine : real;
+  signal ExpectSine, ExpectCosine : real;
 
 begin
+  test_runner_watchdog(runner, 10 sec);
+
+  assert DataWidth_g > LutWidth_g
+    report "Data width (" & integer'image(DataWidth_g) & ") must be greater than LUT width (" & integer'image(LutWidth_g) & ")"
+    severity error;
 
   main : process
   begin
     test_runner_setup(runner, runner_cfg);
     
-    if run("modulator_test_values") then
+    if run("modulator_test") then
 
-      for i in (-(2**Angle'high)) to (2**Angle'high)-1 loop
-        wait until falling_edge(Clk);
-        Angle <= cl_fix_from_real(real(i)/real((2**Angle'high)-1),cFixFmt);
+      for i in -DiscreteValues_c/2 to DiscreteValues_c/2-1 loop
+        -- inject new angle
+        Angle <= cl_fix_from_real(2.0*real(i)/real(DiscreteValues_c),FixFormat_c);
         wait until rising_edge(Clk);
-        -- wait for pipeline to settle
-        wait until rising_edge(Clk);
-        wait until rising_edge(Clk);
-        sRealSinRef <= sin(2.0*MATH_PI*real(i)/real((2**Angle'high)-1));
-        sRealCosRef <= cos(2.0*MATH_PI*real(i)/real((2**Angle'high)-1));
-        sRealSinTable <= cl_fix_to_real(sine_table,cFixFmt);
-        sRealSinInterpol <= cl_fix_to_real(sine_interpol,cFixFmt);
-        sRealCosTable <= cl_fix_to_real(cosine_table,cFixFmt);
-        sRealCosInterpol <= cl_fix_to_real(cosine_interpol,cFixFmt);
         wait for 100 ps;
-        check_equal(sRealSinTable, sRealSinRef, max_diff => TestLimitTable_c);
-        check_equal(sRealSinInterpol, sRealSinRef, max_diff => TestLimitInterpol_c);
-        check_equal(sRealCosTable, sRealCosRef, max_diff => TestLimitTable_c);
-        check_equal(sRealCosInterpol, sRealCosRef, max_diff => TestLimitInterpol_c);
+        -- wait for pipeline to settle        
+        wait until rising_edge(Clk);
+        wait until rising_edge(Clk);
+        wait for 100 ps;
+        -- check values
+        check_equal(RealSine, ExpectSine, max_diff => TestLimit_g);
+        check_equal(RealCosine, ExpectCosine, max_diff => TestLimit_g);
       end loop;
       
     end if;
@@ -64,29 +67,22 @@ begin
   -- generate clock
   Clk <= not Clk after 10 ns;
 
-
   dut1: entity project.Modulator
     generic map (
-      DataWidth_g => 12,
-      LUTWidth_g => 12
+      DataWidth_g => DataWidth_g,
+      LutWidth_g => LutWidth_g
     )
     port map (
       Clk => Clk,
       Angle => Angle,
-      Sine => sine_table,
-      Cosine => cosine_table
+      Sine => Sine,
+      Cosine => Cosine
     );
 
-    dut2: entity project.Modulator
-      generic map (
-        DataWidth_g => 12,
-        LUTWidth_g => 4
-      )
-      port map (
-        Clk => Clk,
-        Angle => Angle,
-        Sine => sine_interpol,
-        Cosine => cosine_interpol
-      );
+    RealSine <= cl_fix_to_real(Sine, FixFormat_c);
+    RealCosine <= cl_fix_to_real(Cosine, FixFormat_c);
+    
+    ExpectSine <= sin(cl_fix_to_real(Angle, FixFormat_c) * 2.0*MATH_PI);
+    ExpectCosine <= cos(cl_fix_to_real(Angle, FixFormat_c) * 2.0*MATH_PI);
 
 end architecture;

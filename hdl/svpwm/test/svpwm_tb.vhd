@@ -18,36 +18,36 @@ end entity;
 
 architecture tb of SVPWM_tb is
 
-    constant cTestPWMFreqkHz : natural := 8;
-    constant cTestDeadTimeNs : natural := 800;
+    constant TestPWMFreqkHz_c : natural := 8;
+    constant TestDeadTimeNs_c : natural := 800;
 
-    constant cTestFrequencyTolerance : real := 0.01; -- 1%
+    constant TestFrequencyTolerance_c : real := 0.01; -- 1%
 
-    constant cFixFmt : FixFormat_t := (1,0,11);
+    constant FixFmt_c : FixFormat_t := (1,0,11);
 
-    signal clk : std_logic := '0';
-    signal reset_n : std_logic := '0';
+    signal Clk              : std_logic := '0';
+    signal Rst              : std_logic := '0';
 
-    signal iUq : std_logic_vector(11 downto 0) :=(others => '0');
-    signal iUd : std_logic_vector(11 downto 0) := (others => '0');
-    signal iSin : std_logic_vector(11 downto 0):= (others => '0');
-    signal iCos : std_logic_vector(11 downto 0) := (others => '0');
-    signal iEn : std_logic := '0';
-    signal iFault_n : std_logic := '0';
+    signal Uq               : std_logic_vector(11 downto 0) :=(others => '0');
+    signal Ud               : std_logic_vector(11 downto 0) := (others => '0');
+    signal Sine             : std_logic_vector(11 downto 0):= (others => '0');
+    signal Cosine           : std_logic_vector(11 downto 0) := (others => '0');
+    signal EnableIn         : std_logic := '0';
+    signal FaultIn_N        : std_logic := '0';
 
-    signal oPWM_A_L          :std_logic := '0';
-    signal oPWM_A_H          :std_logic := '0';
-    signal oPWM_B_L          :std_logic := '0';
-    signal oPWM_B_H          :std_logic := '0';
-    signal oPWM_C_L          :std_logic := '0';
-    signal oPWM_C_H          :std_logic := '0';
-    signal oADCTriggerLSOn    :std_logic := '0';
-    signal oADCTriggerHSOn    :std_logic := '0';
-    signal oEn               :std_logic := '0';
-    signal oFault_n          :std_logic := '0';
+    signal PWM_A_L          :std_logic := '0';
+    signal PWM_A_H          :std_logic := '0';
+    signal PWM_B_L          :std_logic := '0';
+    signal PWM_B_H          :std_logic := '0';
+    signal PWM_C_L          :std_logic := '0';
+    signal PWM_C_H          :std_logic := '0';
+    signal ADCTriggerLSOn   :std_logic := '0';
+    signal ADCTriggerHSOn   :std_logic := '0';
+    signal EnableOut        :std_logic := '0';
+    signal FaultOut_N       :std_logic := '0';
 
-    signal sMeasureTime : time := 0 ns;
-    signal sMeasureF : real := 0.0;
+    signal MeasureTime : time := 0 ns;
+    signal MeasureF : real := 0.0;
 
 begin
 
@@ -60,118 +60,118 @@ begin
     if run("SVPWM_test_out_of_reset") then
 
       -- Set Coefficients
-      iUq <= (others => '0');
-      iUd <= (others => '0');
-      iSin <= (others => '0');
-      iCos <= (others => '0');
-      iEn <= '0';
-      iFault_n <= '1';
+      Uq <= (others => '0');
+      Ud <= (others => '0');
+      Sine <= (others => '0');
+      Cosine <= (others => '0');
+      EnableIn <= '0';
+      FaultIn_N <= '1';
 
-      wait until rising_edge(clk);
+      wait until rising_edge(Clk);
       wait for 100 ps;
       -- stimulus here
-      wait until reset_n = '1';
-      wait until rising_edge(clk);
-      wait until rising_edge(clk);
+      wait until Rst = '1';
+      wait until rising_edge(Clk);
+      wait until rising_edge(Clk);
       wait for 100 ps;
       -- check here
 
     elsif run("SVPWM_test_adc_trigger_and_fpwm") then
 
       -- Stimulus
-      iUq <= X"000";
-      iUd <= X"000";
-      iSin <= X"000";
-      iCos <= X"7FF";
+      Uq <= X"000";
+      Ud <= X"000";
+      Sine <= X"000";
+      Cosine <= X"7FF";
 
       -- Trigger L
-      wait until rising_edge(oADCTriggerHSOn);
-      sMeasureTime <= now;
-      wait until rising_edge(oADCTriggerHSOn);
-      sMeasureTime <= now - sMeasureTime;
+      wait until rising_edge(ADCTriggerHSOn);
+      MeasureTime <= now;
+      wait until rising_edge(ADCTriggerHSOn);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
       -- check frequency
-      check_equal(real((1 ms)/sMeasureTime),real(cTestPWMFreqkHz),max_diff => (cTestFrequencyTolerance*real(cTestPWMFreqkHz)));
+      check_equal(real((1 ms)/MeasureTime),real(TestPWMFreqkHz_c),max_diff => (TestFrequencyTolerance_c*real(TestPWMFreqkHz_c)));
       
       -- Trigger H
-      wait until rising_edge(oADCTriggerLSOn);
-      sMeasureTime <= now;
-      wait until rising_edge(oADCTriggerLSOn);
-      sMeasureTime <= now - sMeasureTime;
+      wait until rising_edge(ADCTriggerLSOn);
+      MeasureTime <= now;
+      wait until rising_edge(ADCTriggerLSOn);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
       -- check frequency
-      check_equal(real((1 ms)/sMeasureTime),real(cTestPWMFreqkHz),max_diff => (cTestFrequencyTolerance*real(cTestPWMFreqkHz)));
+      check_equal(real((1 ms)/MeasureTime),real(TestPWMFreqkHz_c),max_diff => (TestFrequencyTolerance_c*real(TestPWMFreqkHz_c)));
 
     elsif run("SVPWM_test_deadtime") then
 
       -- Stimulus
-      iUq <= X"000"; 
-      iUd <= X"000";
-      iSin <= X"000";
-      iCos <= X"7FF";
-      iEn <= '1';
+      Uq <= X"000"; 
+      Ud <= X"000";
+      Sine <= X"000";
+      Cosine <= X"7FF";
+      EnableIn <= '1';
 
       -- PWM A
-      wait until falling_edge(oPWM_A_L);
-      sMeasureTime <= now;
-      wait until rising_edge(oPWM_A_H);
-      sMeasureTime <= now - sMeasureTime;
+      wait until falling_edge(PWM_A_L);
+      MeasureTime <= now;
+      wait until rising_edge(PWM_A_H);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
-      check_equal(real(sMeasureTime/(1 ns)),real(cTestDeadTimeNs),max_diff => (cTestFrequencyTolerance*real(cTestDeadTimeNs)));
+      check_equal(real(MeasureTime/(1 ns)),real(TestDeadTimeNs_c),max_diff => (TestFrequencyTolerance_c*real(TestDeadTimeNs_c)));
       
-      wait until falling_edge(oPWM_A_H);
-      sMeasureTime <= now;
-      wait until rising_edge(oPWM_A_L);
-      sMeasureTime <= now - sMeasureTime;
+      wait until falling_edge(PWM_A_H);
+      MeasureTime <= now;
+      wait until rising_edge(PWM_A_L);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
-      check_equal(real(sMeasureTime/(1 ns)),real(cTestDeadTimeNs),max_diff => (cTestFrequencyTolerance*real(cTestDeadTimeNs)));
+      check_equal(real(MeasureTime/(1 ns)),real(TestDeadTimeNs_c),max_diff => (TestFrequencyTolerance_c*real(TestDeadTimeNs_c)));
 
       -- PWM B
-      wait until falling_edge(oPWM_B_L);
-      sMeasureTime <= now;
-      wait until rising_edge(oPWM_B_H);
-      sMeasureTime <= now - sMeasureTime;
+      wait until falling_edge(PWM_B_L);
+      MeasureTime <= now;
+      wait until rising_edge(PWM_B_H);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
-      check_equal(real(sMeasureTime/(1 ns)),real(cTestDeadTimeNs),max_diff => (cTestFrequencyTolerance*real(cTestDeadTimeNs)));
+      check_equal(real(MeasureTime/(1 ns)),real(TestDeadTimeNs_c),max_diff => (TestFrequencyTolerance_c*real(TestDeadTimeNs_c)));
 
-      wait until falling_edge(oPWM_B_H);
-      sMeasureTime <= now;
-      wait until rising_edge(oPWM_B_L);
-      sMeasureTime <= now - sMeasureTime;
+      wait until falling_edge(PWM_B_H);
+      MeasureTime <= now;
+      wait until rising_edge(PWM_B_L);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
-      check_equal(real(sMeasureTime/(1 ns)),real(cTestDeadTimeNs),max_diff => (cTestFrequencyTolerance*real(cTestDeadTimeNs)));
+      check_equal(real(MeasureTime/(1 ns)),real(TestDeadTimeNs_c),max_diff => (TestFrequencyTolerance_c*real(TestDeadTimeNs_c)));
       
       -- PWM C
-      wait until falling_edge(oPWM_C_L);
-      sMeasureTime <= now;
-      wait until rising_edge(oPWM_C_H);
-      sMeasureTime <= now - sMeasureTime;
+      wait until falling_edge(PWM_C_L);
+      MeasureTime <= now;
+      wait until rising_edge(PWM_C_H);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
-      check_equal(real(sMeasureTime/(1 ns)),real(cTestDeadTimeNs),max_diff => (cTestFrequencyTolerance*real(cTestDeadTimeNs)));
+      check_equal(real(MeasureTime/(1 ns)),real(TestDeadTimeNs_c),max_diff => (TestFrequencyTolerance_c*real(TestDeadTimeNs_c)));
 
-      wait until falling_edge(oPWM_C_H);
-      sMeasureTime <= now;
-      wait until rising_edge(oPWM_C_L);
-      sMeasureTime <= now - sMeasureTime;
+      wait until falling_edge(PWM_C_H);
+      MeasureTime <= now;
+      wait until rising_edge(PWM_C_L);
+      MeasureTime <= now - MeasureTime;
       wait for 100 ps;
-      check_equal(real(sMeasureTime/(1 ns)),real(cTestDeadTimeNs),max_diff => (cTestFrequencyTolerance*real(cTestDeadTimeNs)));
+      check_equal(real(MeasureTime/(1 ns)),real(TestDeadTimeNs_c),max_diff => (TestFrequencyTolerance_c*real(TestDeadTimeNs_c)));
 
 
     elsif run("SVPWM_test_values") then
 
       -- stimulus
-      iUq <= X"7FF"; 
-      iUd <= X"000";
-      iEn <= '1';
+      Uq <= X"7FF"; 
+      Ud <= X"000";
+      EnableIn <= '1';
 
-      wait until reset_n = '1';
+      wait until Rst = '1';
       for i in 0 to 99 loop
         -- simulate angle
         vAngle := 2.0*MATH_PI*real(i)/100.0;
         -- generate sin/cos
-        iSin <= cl_fix_from_real(sin(vAngle),cFixFmt);
-        iCos <= cl_fix_from_real(cos(vAngle),cFixFmt);
-        wait until rising_edge(clk);
+        Sine <= cl_fix_from_real(sin(vAngle),FixFmt_c);
+        Cosine <= cl_fix_from_real(cos(vAngle),FixFmt_c);
+        wait until rising_edge(Clk);
         wait for 1 ms;
       end loop;
 
@@ -181,36 +181,36 @@ begin
   end process;
 
   -- generate clock (125 Mhz)
-  clk <= not clk after 4 ns;
+  Clk <= not Clk after 4 ns;
 
   -- deassert reset
-  reset_n <= '1' after 77 ns;
+  Rst <= '1' after 77 ns;
   
   dut: entity project.SVPWM
   generic map (
       gSysClkMHz => 125,
-      gPWMFreqkHz => cTestPWMFreqkHz,
-      gDeadTimeNs => cTestDeadTimeNs,
+      gPWMFreqkHz => TestPWMFreqkHz_c,
+      gDeadTimeNs => TestDeadTimeNs_c,
       gDataWidth => 12
   )
   port map (
-      clk => clk,
-      reset_n => reset_n,
-      iUq => iUq,
-      iUd => iUd,
-      iSin => iSin,
-      iCos => iCos,
-      iEn => iEn,
-      iFault_n => iFault_n,
+      Clk => Clk,
+      Rst => Rst,
+      Uq => Uq,
+      Ud => Ud,
+      Sine => Sine,
+      Cosine => Cosine,
+      Enable => Enable,
+      Fault_N => Fault_N,
 
-      oPWM_A_L => oPWM_A_L,
-      oPWM_A_H => oPWM_A_H,
-      oPWM_B_L => oPWM_B_L,
-      oPWM_B_H => oPWM_B_H,
-      oPWM_C_L => oPWM_C_L,
-      oPWM_C_H => oPWM_C_H,
-      oADCTriggerLSOn => oADCTriggerLSOn,
-      oADCTriggerHSOn => oADCTriggerHSOn,
+      PWM_A_L => PWM_A_L,
+      PWM_A_H => PWM_A_H,
+      PWM_B_L => PWM_B_L,
+      PWM_B_H => PWM_B_H,
+      PWM_C_L => PWM_C_L,
+      PWM_C_H => PWM_C_H,
+      ADCTriggerLSOn => ADCTriggerLSOn,
+      ADCTriggerHSOn => ADCTriggerHSOn,
       oEn => oEn,
       oFault_n => oFault_n
   );
