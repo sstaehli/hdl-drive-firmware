@@ -28,10 +28,8 @@ lib.add_source_files("../hdl/transforms/src/abc2dq.vhd")
 lib.add_source_files("../hdl/transforms/test/abc2dq_tb.vhd")
 lib.add_source_files("../hdl/transforms/src/dq2abc.vhd")
 lib.add_source_files("../hdl/transforms/test/dq2abc_tb.vhd")
-#lib.add_source_files("../hdl/svpwm/src/svpwm.vhd")
-#lib.add_source_files("../hdl/svpwm/test/svpwm_tb.vhd")
-lib.add_source_files("../hdl/modulator/src/modulator.vhd")
-lib.add_source_files("../hdl/modulator/test/modulator_tb.vhd")
+lib.add_source_files("../hdl/spiadc/src/spiadc.vhd")
+lib.add_source_files("../hdl/spiadc/test/spiadc_tb.vhd")
 
 # Obviously flags must be set after files are imported
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed-rules', '-Wno-hide', '-Wno-shared'])
@@ -64,6 +62,12 @@ tb.add_config(name = "d_negative", generics=dict(D_g="-1.0", Q_g="0.0"))
 tb.add_config(name = "q", generics=dict(D_g="0.0", Q_g="1.0"))
 tb.add_config(name = "q_negative", generics=dict(D_g="0.0", Q_g="-1.0"))
 tb.add_config(name = "saturate", generics=dict(D_g="1.0", Q_g="1.0", TestLimit_g="1.0"))
+
+tb = lib.entity("spiadc_tb")
+tb.add_config(name="default")
+tb.add_config(name="DataWidth14", generics=dict(DataWidth_g="14"))
+tb.add_config(name="Zero", generics=dict(DataWidth_g="14", TestDataU_g="0", TestDataV_g="0", TestDataW_g="0", TestDataVBus_g="0"))
+tb.add_config(name="Max", generics=dict(DataWidth_g="14", TestDataU_g="16383", TestDataV_g="16383", TestDataW_g="16383", TestDataVBus_g="16383"))
 
 # Run VUnit
 vu.main()
