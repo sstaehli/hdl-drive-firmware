@@ -22,6 +22,8 @@ olo_lib.add_source_files("../lib/open-logic/src/fix/vhdl/*.vhd")
 # Add libraries
 lib = vu.add_library("project")
 lib.add_source_files("../hdl/project_pkg.vhd")
+lib.add_source_files("../hdl/modulator/src/modulator.vhd")
+lib.add_source_files("../hdl/modulator/test/modulator_tb.vhd")
 lib.add_source_files("../hdl/transforms/src/abc2dq.vhd")
 lib.add_source_files("../hdl/transforms/test/abc2dq_tb.vhd")
 lib.add_source_files("../hdl/transforms/src/dq2abc.vhd")
