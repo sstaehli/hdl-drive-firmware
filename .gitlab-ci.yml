@@ -7,15 +7,9 @@ variables:
 
 unit_test:
   stage: test
-  image: gitlab-registry.airhead.ch/nvc-vunit
+  image: $CI_REGISTRY/nvc-vunit
   variables:
-    DOCKER_AUTH_CONFIG: |
-      {
-        "auths": {
-          "gitlab-registry.airhead.ch": {
-            "auth": "$CI_JOB_TOKEN"
-          }
-        }
-      }
+    CI_REGISTRY_USER: gitlab-ci-token
+    CI_REGISTRY_PASSWORD: $CI_JOB_TOKEN
   script:
     - cd test && python3 ./run.py
