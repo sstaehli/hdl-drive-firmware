@@ -4,6 +4,14 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_DEPTH: 1
+  DOCKER_AUTH_CONFIG: |
+    {
+      "auths": {
+        "gitlab-registry.airhead.ch": {
+          "auth": "$CI_JOB_TOKEN"
+        }
+      }
+    }
 
 unit_test:
   stage: test
