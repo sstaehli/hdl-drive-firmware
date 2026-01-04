@@ -4,11 +4,17 @@ stages:
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
   GIT_SUBMODULE_DEPTH: 1
+  DOCKER_AUTH_CONFIG: |
+    {
+      "auths": {
+        "gitlab-registry.airhead.ch": {
+          "auth": "$CI_JOB_TOKEN"
+        }
+      }
+    }
 
 unit_test:
   stage: test
   image: gitlab-registry.airhead.ch/nvc-vunit
-  before_script:
-    - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN gitlab-registry.airhead.ch
   script:
     - cd test && python3 ./run.py
