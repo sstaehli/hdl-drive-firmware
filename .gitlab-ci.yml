@@ -7,6 +7,6 @@ variables:
 
 unit_test:
   stage: test
-  image: ghcr.io/vunit/dev/nvc
+  image: gitlab-registry.airhead.ch/nvc-vunit
   script:
     - cd test && python3 ./run.py
