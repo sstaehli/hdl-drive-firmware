@@ -1,13 +1,21 @@
 UNITS?="*"
-export VUNIT_SIMULATOR?=ghdl
+GHDL?=ghdl
+NVC?=nvc
+MODELSIM?=/tools/altera/25.1std/questa_fse/bin/vsim
+
+.PHONY: venv
+venv:
+	python -m venv .venv
+	. .venv/bin/activate
+	pip install vunit_hdl
 
 .PHONY: test
 test:
 	cd test && \
 	VUNIT_SIMULATOR=nvc python3 ./run.py ${UNITS}
 
-.PHONY: sim
-sim:
+.PHONY: debug
+debug:
 	cd test && \
 	VUNIT_SIMULATOR=modelsim python3 ./run.py -g ${UNITS}
 

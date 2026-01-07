@@ -37,7 +37,7 @@ vu.add_compile_option('nvc.a_flags', ['--relaxed'])
 
 # Configure modelsim
 for tb in lib.get_test_benches():
-    tb.set_sim_option("modelsim.init_file.gui", join(root, "..", "sim", "scripts", tb.name + "_wave.do"))
+    tb.set_sim_option("modelsim.init_file.gui", join(root, "..", "debug", "scripts", tb.name + "_wave.do"))
 
 # Configure  testbenches
 tb = lib.entity("modulator_tb")
