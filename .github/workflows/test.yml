@@ -8,7 +8,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/sstaehli/nvc-cunit:latest
+      image: ghcr.io/sstaehli/nvc-vunit:latest
     steps:
       - uses: actions/checkout@v4
       - name: Run unit tests
