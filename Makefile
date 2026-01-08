@@ -12,7 +12,7 @@ venv:
 .PHONY: test
 test:
 	cd test && \
-	VUNIT_SIMULATOR=nvc python3 ./run.py ${UNITS}
+	./nvc-vunit-docker ./run.py
 
 .PHONY: debug
 debug:
