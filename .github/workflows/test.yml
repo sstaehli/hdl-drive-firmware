@@ -7,15 +7,16 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/sstaehli/nvc-vunit:latest
+
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
+
       - name: Run unit tests
-        working-directory: ./test
+        uses: docker://ghcr.io/sstaehli/nvc-vunit:latest
         run: |
           . /opt/venv/bin/activate
+          cd test
           python3 ./run.py
