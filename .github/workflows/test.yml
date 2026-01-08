@@ -16,7 +16,6 @@ jobs:
 
       - name: Run unit tests
         uses: docker://ghcr.io/sstaehli/nvc-vunit:latest
-        run: |
-          . /opt/venv/bin/activate
-          cd test
-          python3 ./run.py
+        with:
+          entrypoint: /bin/bash
+          args: -lc "source /opt/venve/bin/activate && cd /github/workspace/test && python3 ./run.py"
