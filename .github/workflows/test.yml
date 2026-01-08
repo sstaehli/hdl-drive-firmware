@@ -14,5 +14,5 @@ jobs:
       - name: Run unit tests
         working-directory: ./test
         run: |
-          source /opt/venv/bin/activate
+          . /opt/venv/bin/activate
           python3 ./run.py
