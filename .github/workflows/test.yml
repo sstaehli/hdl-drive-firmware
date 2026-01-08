@@ -11,6 +11,9 @@ jobs:
       image: ghcr.io/sstaehli/nvc-vunit:latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
       - name: Run unit tests
         working-directory: ./test
         run: |
