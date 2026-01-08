@@ -18,4 +18,4 @@ jobs:
         uses: docker://ghcr.io/sstaehli/nvc-vunit:latest
         with:
           entrypoint: /bin/bash
-          args: -lc "source /opt/venve/bin/activate && cd /github/workspace/test && python3 ./run.py"
+          args: -lc "source /opt/venv/bin/activate && cd /github/workspace/test && python3 ./run.py"
