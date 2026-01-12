@@ -8,5 +8,5 @@ https://github.com/sstaehli/hdl-drive-firmware/actions/workflows/test.yml
 )
 
 [![GitLab CI](https://gitlab.airhead.ch/libraries/hdl-drive-firmware/badges/main/pipeline.svg)](
-https://gitlab.airhead.ch/libraries/hdl-drive-firmware-/pipelines
+https://gitlab.airhead.ch/libraries/hdl-drive-firmware/-/pipelines
 )
