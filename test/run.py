@@ -30,6 +30,8 @@ lib.add_source_files("../hdl/transforms/src/dq2abc.vhd")
 lib.add_source_files("../hdl/transforms/test/dq2abc_tb.vhd")
 lib.add_source_files("../hdl/spiadc/src/spiadc.vhd")
 lib.add_source_files("../hdl/spiadc/test/spiadc_tb.vhd")
+lib.add_source_files("../hdl/posdecoder/src/abzdecoder.vhd")
+lib.add_source_files("../hdl/posdecoder/test/abzdecoder_tb.vhd")
 
 # Obviously flags must be set after files are imported
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed-rules', '-Wno-hide', '-Wno-shared'])
