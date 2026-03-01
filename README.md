@@ -1,6 +1,6 @@
 # HDL Drive Firmware
 
-Library for driving electric motors from progrmmable logic.
+Library for driving electric motors from programmable logic.
 
 
 [![GitHub Actions](https://github.com/sstaehli/hdl-drive-firmware/actions/workflows/test.yml/badge.svg)](
