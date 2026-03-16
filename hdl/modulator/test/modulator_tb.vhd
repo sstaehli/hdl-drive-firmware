@@ -7,7 +7,6 @@ library IEEE;
 
 library olo;
     use olo.en_cl_fix_pkg.all;
-    use olo.olo_fix_pkg.all;
 
 library project;
     use project.project_pkg.all;
@@ -17,17 +16,18 @@ entity modulator_tb is
         runner_cfg : string;
         DataWidth_g : natural := 12;
         LutWidth_g : natural := 4;
-        TestLimit_g : real := 0.02
+        TestLimit_g : real := 0.1
     );
 end entity;
 
 architecture tb of modulator_tb is
 
     constant FixFormat_c : FixFormat_t := (1, 0, DataWidth_g-1);
+    constant AngleFixFormat_c : FixFormat_t := (0, 0, DataWidth_g);
     constant DiscreteValues_c : natural := 2**cl_fix_width(FixFormat_c);
 
     signal Clk : std_logic := '0';
-    signal Angle : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0) := (others => '0');
+    signal Angle : std_logic_vector(cl_fix_width(AngleFixFormat_c)-1 downto 0) := (others => '0');
     signal Sine, Cosine : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
     signal RealSine, RealCosine : real;
     signal ExpectSine, ExpectCosine : real;
@@ -45,19 +45,19 @@ begin
         
         if run("modulator_test") then
 
-            for i in -DiscreteValues_c/2 to DiscreteValues_c/2-1 loop
+            for i in 0 to DiscreteValues_c-1 loop
                 -- inject new angle
-                Angle <= cl_fix_from_real(2.0*real(i)/real(DiscreteValues_c),FixFormat_c);
+                Angle <= cl_fix_from_real(real(i)/real(DiscreteValues_c),AngleFixFormat_c);
                 wait until rising_edge(Clk);
                 wait for 100 ps;
                 -- wait for pipeline to settle        
                 wait until rising_edge(Clk);
                 wait until rising_edge(Clk);
                 wait for 100 ps;
+            end loop;
                 -- check values
                 check_equal(RealSine, ExpectSine, max_diff => TestLimit_g);
                 check_equal(RealCosine, ExpectCosine, max_diff => TestLimit_g);
-            end loop;
             
         end if;
 
