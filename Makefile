@@ -1,4 +1,4 @@
-UNITS?="*"
+UNITS?=*
 GHDL?=ghdl
 NVC?=nvc
 MODELSIM?=/tools/altera/25.1std/questa_fse/bin/vsim
@@ -12,12 +12,12 @@ venv:
 .PHONY: test
 test:
 	cd test && \
-	./nvc-vunit-docker ./run.py
+	./nvc-vunit-docker ./run.py "*${UNITS}"
 
 .PHONY: debug
 debug:
 	cd test && \
-	VUNIT_SIMULATOR=modelsim python3 ./run.py -g ${UNITS}
+	VUNIT_SIMULATOR=modelsim python3 ./run.py -g "*${UNITS}"
 
 .PHONY: psi_to_olo
 psi_to_olo:

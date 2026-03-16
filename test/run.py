@@ -45,7 +45,7 @@ for tb in lib.get_test_benches():
 tb = lib.entity("modulator_tb")
 tb.add_config(name = "default")
 tb.add_config(name = "LUTMax", generics=dict(DataWidth_g="12", LutWidth_g="11", TestLimit_g="0.005"))
-tb.add_config(name = "LUTMin", generics=dict(DataWidth_g="12", LutWidth_g="3", TestLimit_g="0.1"))
+tb.add_config(name = "LUTMin", generics=dict(DataWidth_g="12", LutWidth_g="1", TestLimit_g="1.0"))
 
 tb = lib.entity("abc2dq_tb")
 tb.add_config(name = "default")
@@ -70,6 +70,9 @@ tb.add_config(name="default")
 tb.add_config(name="DataWidth14", generics=dict(DataWidth_g="14"))
 tb.add_config(name="Zero", generics=dict(DataWidth_g="14", TestDataU_g="0", TestDataV_g="0", TestDataW_g="0", TestDataVBus_g="0"))
 tb.add_config(name="Max", generics=dict(DataWidth_g="14", TestDataU_g="16383", TestDataV_g="16383", TestDataW_g="16383", TestDataVBus_g="16383"))
+
+# disable optimisation for debugging with modelsim
+lib.set_compile_option("modelsim.vcom_flags", ["+acc"])
 
 # Run VUnit
 vu.main()
