@@ -7,7 +7,6 @@ library IEEE;
 
 library olo;
   use olo.en_cl_fix_pkg.all;
-  use olo.olo_fix_pkg.all;
 
 library project;
   use project.project_pkg.all;

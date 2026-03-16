@@ -20,7 +20,6 @@ library IEEE;
 library olo;
     use olo.olo_base_pkg_math.all;
     use olo.en_cl_fix_pkg.all;
-    use olo.olo_fix_pkg.all;
 
 ---------------------------------------------------------------------------------------------------
 -- Entity Declaration

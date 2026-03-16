@@ -5,7 +5,6 @@ library IEEE;
 
 library olo;
   use olo.en_cl_fix_pkg.all;
-  use olo.olo_fix_pkg.all;
 
 entity SVPWM is
   generic (
