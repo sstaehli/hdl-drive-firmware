@@ -86,54 +86,6 @@ architecture rtl of Modulator is
         end case;
         return lut_value;
     end function LookupFromQuadrant;
-
-    procedure Lookup(
-        variable angle         : in    std_logic_vector;
-        variable lut_value     : out   SinCos_t;
-        signal   lut_value_reg : in    SinCos_t;
-        variable segment       : out   SinCos_t;
-        signal   segment_reg   : in    SinCos_t;
-        variable remainder     : out   std_logic_vector;
-        signal   remainder_reg : in    std_logic_vector;
-        variable result        : out   SinCos_t
-    ) is
-        
-        alias quadrant : std_logic_vector(1 downto 0)
-            is angle(DataWidth_g-1 downto DataWidth_g-2);
-        alias idx : std_logic_vector(TableWidth_c-1 downto 0)
-            is angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
-        alias remainder_slice : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0)
-            is angle(cl_fix_width(RemainderFormat_c)-1 downto 0);
-
-        variable segment_angle : std_logic_vector(DataWidth_g-1 downto 0);
-        alias segment_lut_angle : std_logic_vector(TableWidth_c-1+2 downto 0)
-            is segment_angle(DataWidth_g-1 downto DataWidth_g-2-TableWidth_c);
-        alias segment_quadrant : std_logic_vector(1 downto 0)
-            is segment_angle(DataWidth_g-1 downto DataWidth_g-2);
-        alias segment_idx : std_logic_vector(TableWidth_c-1 downto 0)
-            is segment_angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
-
-    begin
-
-        lut_value := LookupFromQuadrant(idx, quadrant);
-        
-        segment_angle := angle;
-        segment_lut_angle := std_logic_vector(unsigned(segment_lut_angle) + 1);
-        segment := LookupFromQuadrant(segment_idx, segment_quadrant);
-
-        remainder := remainder_slice;
-
-        for i in Sin_c to Cos_c loop
-            result(i) := cl_fix_add(
-                lut_value_reg(i), FixFormat_c,
-                cl_fix_mult(
-                    remainder_reg, RemainderFormat_c,
-                    cl_fix_sub(segment_reg(i), FixFormat_c, lut_value_reg(i), FixFormat_c, FixFormat_c), FixFormat_c,
-                    FixFormat_c), FixFormat_c,
-                FixFormat_c);
-        end loop;
-
-    end procedure Lookup;
     
     type TwoProcess_r is record
         LutVal    : SinCos_t;
@@ -171,19 +123,42 @@ begin
     -----------------------------------------------------------------------------------------------
     p_combinatorial: process(all) is
         variable v : TwoProcess_r;
-        variable Angle_v : std_logic_vector(DataWidth_g-1 downto 0);
+        
+        alias quadrant : std_logic_vector(1 downto 0)
+            is Angle(DataWidth_g-1 downto DataWidth_g-2);
+        alias idx : std_logic_vector(TableWidth_c-1 downto 0)
+            is Angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
+        alias remainder_slice : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0)
+            is Angle(cl_fix_width(RemainderFormat_c)-1 downto 0);
+
+        variable segment_angle : std_logic_vector(DataWidth_g-1 downto 0);
+        alias segment_lut_angle : std_logic_vector(TableWidth_c-1+2 downto 0)
+            is segment_angle(DataWidth_g-1 downto DataWidth_g-2-TableWidth_c);
+        alias segment_quadrant : std_logic_vector(1 downto 0)
+            is segment_angle(DataWidth_g-1 downto DataWidth_g-2);
+        alias segment_idx : std_logic_vector(TableWidth_c-1 downto 0)
+            is segment_angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
     begin
         -- *** hold variables stable ***
         v := r;
 
-        -- Assign signal to variable, modelsim cant handle this otherwise
-        Angle_v := Angle;
-        Lookup(
-            Angle_v,
-            v.LutVal, r.LutVal,
-            v.LinearSeg, r.LinearSeg,
-            v.Remainder, r.Remainder,
-            v.SinCos);
+        v.LutVal := LookupFromQuadrant(idx, quadrant);
+        
+        segment_angle := angle;
+        segment_lut_angle := std_logic_vector(unsigned(segment_lut_angle) + 1);
+        v.LinearSeg := LookupFromQuadrant(segment_idx, segment_quadrant);
+
+        v.Remainder := remainder_slice;
+
+        for i in Sin_c to Cos_c loop
+            v.SinCos(i) := cl_fix_add(
+                r.LutVal(i), FixFormat_c,
+                cl_fix_mult(
+                    r.Remainder, RemainderFormat_c,
+                    cl_fix_sub(r.LinearSeg(i), FixFormat_c, r.LutVal(i), FixFormat_c, FixFormat_c), FixFormat_c,
+                    FixFormat_c), FixFormat_c,
+                FixFormat_c);
+        end loop;
 
         r_next <= v;
     end process p_combinatorial;
