@@ -47,45 +47,49 @@ architecture rtl of Modulator is
     --   sin(a) = -sin(180 - a) for a in [90,180)
     --   sin(a) = -sin(a - 180) for a in [180,270)
     --   sin(a) = sin(360 - a)  for a in [270,360)
-    -- 
-    constant TableWidth_c      : integer       := minimum(LutWidth_g, DataWidth_g-2);
-    constant TableSize_c       : natural       := 2**(TableWidth_c);
-    constant FixFormat_c       : FixFormat_t   := (1, 0, DataWidth_g-1);
-    constant RemainderFormat_c : FixFormat_t   := (0, 0, DataWidth_g-2-TableWidth_c);
-    constant A90Deg_c          : natural       := (2**(DataWidth_g)-1)/4;
-
-    -- define discrete sSine values of one quarter period (= table size)
-    constant Sin_c : natural := 0;
-    constant Cos_c : natural := 1;
+    -- same for cose, but shifted by 90 degrees
+    constant TableWidth_c        : integer       := minimum(LutWidth_g, DataWidth_g-2);
+    constant TableSize_c         : natural       := 2**(TableWidth_c);
+    constant FixFormat_c         : FixFormat_t   := (1, 0, DataWidth_g-1);
+    constant RemainderFormat_c   : FixFormat_t   := (0, 0, DataWidth_g-2-TableWidth_c);
+    constant LutAngleIncrement_c : unsigned(DataWidth_g-1 downto 0) := to_unsigned(2**(DataWidth_g-2-TableWidth_c), DataWidth_g);
     
-    type SinCos_t is array (Sin_c to Cos_c) of std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
-    type SinCosRemainder_t is array (Sin_c to Cos_c) of std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
+    -- define discrete sSine values of one quarter period (= table size)
+    type SinCosIndex_t is (SIN_IDX, COS_IDX);
+    
+    type SinCos_t is array (SinCosIndex_t) of std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
+    type SinCosRemainder_t is array (SinCosIndex_t) of std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
 	type Lut_t is array (0 to TableSize_c-1) of SinCos_t;
     signal Lut_c : Lut_t;
 
-    impure function LookupFromQuadrant(idx : std_logic_vector; quadrant : std_logic_vector)
+    impure function Lookup(lut_angle : unsigned)
     return SinCos_t is
         variable lut_index : integer;
-        variable lut_value : SinCos_t := (others => (others => '0'));
+        variable lut_value : SinCos_t;
+        
+        alias quadrant : unsigned(1 downto 0)
+            is lut_angle(DataWidth_g-1 downto DataWidth_g-2);
+        alias idx : unsigned(TableWidth_c-1 downto 0)
+            is lut_angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
     begin
-        lut_index := to_integer(unsigned(idx));
+        lut_index := to_integer(idx);
         case quadrant is
             when "00" =>
-                lut_value(Sin_c) := Lut_c(lut_index)(Sin_c);
-                lut_value(Cos_c) := Lut_c(lut_index)(Cos_c);
+                lut_value(SIN_IDX) := Lut_c(lut_index)(SIN_IDX);
+                lut_value(COS_IDX) := Lut_c(lut_index)(COS_IDX);
             when "01" =>
-                lut_value(Sin_c) := Lut_c(lut_index)(Cos_c);
-                lut_value(Cos_c) := not Lut_c(lut_index)(Sin_c);
+                lut_value(SIN_IDX) := Lut_c(lut_index)(COS_IDX);
+                lut_value(COS_IDX) := not Lut_c(lut_index)(SIN_IDX);
             when "10" =>
-                lut_value(Sin_c) := not Lut_c(lut_index)(Sin_c);
-                lut_value(Cos_c) := not Lut_c(lut_index)(Cos_c);
+                lut_value(SIN_IDX) := not Lut_c(lut_index)(SIN_IDX);
+                lut_value(COS_IDX) := not Lut_c(lut_index)(COS_IDX);
             when "11" =>
-                lut_value(Sin_c) := not Lut_c(lut_index)(Cos_c);
-                lut_value(Cos_c) := Lut_c(lut_index)(Sin_c);
+                lut_value(SIN_IDX) := not Lut_c(lut_index)(COS_IDX);
+                lut_value(COS_IDX) := Lut_c(lut_index)(SIN_IDX);
             when others =>   
         end case;
         return lut_value;
-    end function LookupFromQuadrant;
+    end function Lookup;
     
     type TwoProcess_r is record
         LutVal    : SinCos_t;
@@ -114,8 +118,8 @@ begin
       severity warning;
 
     table : for i in Lut_c'range generate
-        Lut_c(i)(0) <= cl_fix_from_real(sin(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
-        Lut_c(i)(1) <= cl_fix_from_real(cos(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
+        Lut_c(i)(SIN_IDX) <= cl_fix_from_real(sin(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
+        Lut_c(i)(COS_IDX) <= cl_fix_from_real(cos(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
     end generate table;
 
     -----------------------------------------------------------------------------------------------
@@ -123,34 +127,23 @@ begin
     -----------------------------------------------------------------------------------------------
     p_combinatorial: process(all) is
         variable v : TwoProcess_r;
-        
-        alias quadrant : std_logic_vector(1 downto 0)
-            is Angle(DataWidth_g-1 downto DataWidth_g-2);
-        alias idx : std_logic_vector(TableWidth_c-1 downto 0)
-            is Angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
-        alias remainder_slice : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0)
-            is Angle(cl_fix_width(RemainderFormat_c)-1 downto 0);
-
-        variable segment_angle : std_logic_vector(DataWidth_g-1 downto 0);
-        alias segment_lut_angle : std_logic_vector(TableWidth_c-1+2 downto 0)
-            is segment_angle(DataWidth_g-1 downto DataWidth_g-2-TableWidth_c);
-        alias segment_quadrant : std_logic_vector(1 downto 0)
-            is segment_angle(DataWidth_g-1 downto DataWidth_g-2);
-        alias segment_idx : std_logic_vector(TableWidth_c-1 downto 0)
-            is segment_angle(DataWidth_g-3 downto DataWidth_g-2-TableWidth_c);
+        variable current_angle : unsigned(DataWidth_g-1 downto 0);
+        variable next_angle : unsigned(DataWidth_g-1 downto 0);
+        alias remainder_slice : unsigned(cl_fix_width(RemainderFormat_c)-1 downto 0)
+            is current_angle(cl_fix_width(RemainderFormat_c)-1 downto 0);
     begin
         -- *** hold variables stable ***
         v := r;
 
-        v.LutVal := LookupFromQuadrant(idx, quadrant);
+        current_angle := unsigned(Angle);
+        v.LutVal := Lookup(current_angle);
         
-        segment_angle := angle;
-        segment_lut_angle := std_logic_vector(unsigned(segment_lut_angle) + 1);
-        v.LinearSeg := LookupFromQuadrant(segment_idx, segment_quadrant);
+        next_angle := unsigned(Angle) + LutAngleIncrement_c;
+        v.LinearSeg := Lookup(next_angle);
 
-        v.Remainder := remainder_slice;
+        v.Remainder := std_logic_vector(remainder_slice);
 
-        for i in Sin_c to Cos_c loop
+        for i in SinCos_t'range loop
             v.SinCos(i) := cl_fix_add(
                 r.LutVal(i), FixFormat_c,
                 cl_fix_mult(
@@ -166,8 +159,8 @@ begin
     -----------------------------------------------------------------------------------------------
     -- Outputs
     -----------------------------------------------------------------------------------------------
-    Sine   <= std_logic_vector(r.SinCos(Sin_c));
-    Cosine <= std_logic_vector(r.SinCos(Cos_c));
+    Sine   <= std_logic_vector(r.SinCos(SIN_IDX));
+    Cosine <= std_logic_vector(r.SinCos(COS_IDX));
 
     -----------------------------------------------------------------------------------------------
     -- Sequential Proccess
