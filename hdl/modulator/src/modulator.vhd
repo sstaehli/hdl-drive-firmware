@@ -55,17 +55,23 @@ architecture rtl of Modulator is
     constant LutAngleIncrement_c : unsigned(DataWidth_g-1 downto 0) := to_unsigned(2**(DataWidth_g-2-TableWidth_c), DataWidth_g);
     
     -- define discrete sSine values of one quarter period (= table size)
-    type SinCosIndex_t is (SIN_IDX, COS_IDX);
+    type LutEntry_t is record
+        Sine : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
+        Cosine : std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
+    end record;
     
-    type SinCos_t is array (SinCosIndex_t) of std_logic_vector(cl_fix_width(FixFormat_c)-1 downto 0);
-    type SinCosRemainder_t is array (SinCosIndex_t) of std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
-	type Lut_t is array (0 to TableSize_c-1) of SinCos_t;
+	type Lut_t is array (0 to TableSize_c-1) of LutEntry_t;
     signal Lut_c : Lut_t;
 
+    type Linear_t is record
+        Sine : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
+        Cosine : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
+    end record;
+
     impure function Lookup(lut_angle : unsigned)
-    return SinCos_t is
+    return LutEntry_t is
         variable lut_index : integer;
-        variable lut_value : SinCos_t;
+        variable lut_value : LutEntry_t;
         
         alias quadrant : unsigned(1 downto 0)
             is lut_angle(DataWidth_g-1 downto DataWidth_g-2);
@@ -75,27 +81,27 @@ architecture rtl of Modulator is
         lut_index := to_integer(idx);
         case quadrant is
             when "00" =>
-                lut_value(SIN_IDX) := Lut_c(lut_index)(SIN_IDX);
-                lut_value(COS_IDX) := Lut_c(lut_index)(COS_IDX);
+                lut_value.Sine := Lut_c(lut_index).Sine;
+                lut_value.Cosine := Lut_c(lut_index).Cosine;
             when "01" =>
-                lut_value(SIN_IDX) := Lut_c(lut_index)(COS_IDX);
-                lut_value(COS_IDX) := not Lut_c(lut_index)(SIN_IDX);
+                lut_value.Sine := Lut_c(lut_index).Cosine;
+                lut_value.Cosine := not Lut_c(lut_index).Sine;
             when "10" =>
-                lut_value(SIN_IDX) := not Lut_c(lut_index)(SIN_IDX);
-                lut_value(COS_IDX) := not Lut_c(lut_index)(COS_IDX);
+                lut_value.Sine := not Lut_c(lut_index).Sine;
+                lut_value.Cosine := not Lut_c(lut_index).Cosine;
             when "11" =>
-                lut_value(SIN_IDX) := not Lut_c(lut_index)(COS_IDX);
-                lut_value(COS_IDX) := Lut_c(lut_index)(SIN_IDX);
+                lut_value.Sine := not Lut_c(lut_index).Cosine;
+                lut_value.Cosine := Lut_c(lut_index).Sine;
             when others =>   
         end case;
         return lut_value;
     end function Lookup;
     
     type TwoProcess_r is record
-        LutVal    : SinCos_t;
-        LinearSeg : SinCos_t;
-        Remainder : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
-        SinCos    : SinCos_t;
+        LutVal     : LutEntry_t;
+        NextLutVal : LutEntry_t;
+        Remainder  : std_logic_vector(cl_fix_width(RemainderFormat_c)-1 downto 0);
+        Sum        : LutEntry_t;
     end record;
 
     signal r, r_next : TwoProcess_r;
@@ -118,8 +124,8 @@ begin
       severity warning;
 
     table : for i in Lut_c'range generate
-        Lut_c(i)(SIN_IDX) <= cl_fix_from_real(sin(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
-        Lut_c(i)(COS_IDX) <= cl_fix_from_real(cos(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
+        Lut_c(i).Sine <= cl_fix_from_real(sin(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
+        Lut_c(i).Cosine <= cl_fix_from_real(cos(2.0*MATH_PI*real(i+1)/real(4*TableSize_c)),FixFormat_c);
     end generate table;
 
     -----------------------------------------------------------------------------------------------
@@ -139,19 +145,25 @@ begin
         v.LutVal := Lookup(current_angle);
         
         next_angle := unsigned(Angle) + LutAngleIncrement_c;
-        v.LinearSeg := Lookup(next_angle);
+        v.NextLutVal := Lookup(next_angle);
 
         v.Remainder := std_logic_vector(remainder_slice);
 
-        for i in SinCos_t'range loop
-            v.SinCos(i) := cl_fix_add(
-                r.LutVal(i), FixFormat_c,
-                cl_fix_mult(
-                    r.Remainder, RemainderFormat_c,
-                    cl_fix_sub(r.LinearSeg(i), FixFormat_c, r.LutVal(i), FixFormat_c, FixFormat_c), FixFormat_c,
-                    FixFormat_c), FixFormat_c,
-                FixFormat_c);
-        end loop;
+        v.Sum.Sine := cl_fix_add(
+            r.LutVal.Sine, FixFormat_c,
+            cl_fix_mult(
+                r.Remainder, RemainderFormat_c,
+                cl_fix_sub(r.NextLutVal.Sine, FixFormat_c, r.LutVal.Sine, FixFormat_c, FixFormat_c), FixFormat_c,
+                FixFormat_c), FixFormat_c,
+            FixFormat_c);
+
+        v.Sum.Cosine := cl_fix_add(
+            r.LutVal.Cosine, FixFormat_c,
+            cl_fix_mult(
+                r.Remainder, RemainderFormat_c,
+                cl_fix_sub(r.NextLutVal.Cosine, FixFormat_c, r.LutVal.Cosine, FixFormat_c, FixFormat_c), FixFormat_c,
+                FixFormat_c), FixFormat_c,
+            FixFormat_c);
 
         r_next <= v;
     end process p_combinatorial;
@@ -159,8 +171,8 @@ begin
     -----------------------------------------------------------------------------------------------
     -- Outputs
     -----------------------------------------------------------------------------------------------
-    Sine   <= std_logic_vector(r.SinCos(SIN_IDX));
-    Cosine <= std_logic_vector(r.SinCos(COS_IDX));
+    Sine   <= std_logic_vector(r.Sum.Sine);
+    Cosine <= std_logic_vector(r.Sum.Cosine);
 
     -----------------------------------------------------------------------------------------------
     -- Sequential Proccess
