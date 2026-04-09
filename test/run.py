@@ -30,8 +30,10 @@ lib.add_source_files("../hdl/transforms/src/dq2abc.vhd")
 lib.add_source_files("../hdl/transforms/test/dq2abc_tb.vhd")
 lib.add_source_files("../hdl/spiadc/src/spiadc.vhd")
 lib.add_source_files("../hdl/spiadc/test/spiadc_tb.vhd")
-lib.add_source_files("../hdl/posdecoder/src/abzdecoder.vhd")
-lib.add_source_files("../hdl/posdecoder/test/abzdecoder_tb.vhd")
+lib.add_source_files("../hdl/bitfilter/src/bitfilter.vhd")
+lib.add_source_files("../hdl/bitfilter/test/bitfilter_tb.vhd")
+lib.add_source_files("../hdl/abzdecoder/src/abzdecoder.vhd")
+lib.add_source_files("../hdl/abzdecoder/test/abzdecoder_tb.vhd")
 
 # Obviously flags must be set after files are imported
 vu.add_compile_option('ghdl.a_flags', ['-frelaxed-rules', '-Wno-hide', '-Wno-shared'])
@@ -70,6 +72,15 @@ tb.add_config(name="default")
 tb.add_config(name="DataWidth14", generics=dict(DataWidth_g="14"))
 tb.add_config(name="Zero", generics=dict(DataWidth_g="14", TestDataU_g="0", TestDataV_g="0", TestDataW_g="0", TestDataVBus_g="0"))
 tb.add_config(name="Max", generics=dict(DataWidth_g="14", TestDataU_g="16383", TestDataV_g="16383", TestDataW_g="16383", TestDataVBus_g="16383"))
+
+tb = lib.entity("bitfilter_tb")
+tb.add_config(name="default")
+tb.add_config(name="Filter64Threshold0", generics=dict(FilterLengthSamples_g="64", FilterThreshold_g="0"))
+tb.add_config(name="Filter64Threshold7", generics=dict(FilterLengthSamples_g="64", FilterThreshold_g="7"))
+tb.add_config(name="Filter64Threshold8", generics=dict(FilterLengthSamples_g="64", FilterThreshold_g="8"))
+
+tb = lib.entity("abzdecoder_tb")
+tb.add_config(name="default")
 
 # disable optimisation for debugging with modelsim
 lib.set_compile_option("modelsim.vcom_flags", ["+acc"])
