@@ -55,9 +55,9 @@ begin
                 wait until rising_edge(Clk);
                 wait for 100 ps;
             end loop;
-                -- check values
-                check_equal(RealSine, ExpectSine, max_diff => TestLimit_g);
-                check_equal(RealCosine, ExpectCosine, max_diff => TestLimit_g);
+            -- check values
+            check_equal(RealSine, ExpectSine, max_diff => TestLimit_g);
+            check_equal(RealCosine, ExpectCosine, max_diff => TestLimit_g);
             
         end if;
 
@@ -67,7 +67,7 @@ begin
     -- generate clock
     Clk <= not Clk after 10 ns;
 
-    dut1: entity project.Modulator
+    uut: entity project.Modulator
         generic map (
             DataWidth_g => DataWidth_g,
             LutWidth_g => LutWidth_g
